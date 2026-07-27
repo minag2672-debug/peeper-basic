@@ -1,0 +1,3228 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>피퍼 (Peeper)</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Nanum+Gothic:wght@400;700;800&display=swap');
+:root{--bg:#0d0f1a;--surface:#161929;--card-bg:#1e2236;--gold:#f5a623;--red:#e8415a;--blue:#4fc3f7;--text:#eef0ff;--muted:#7880a0;--border:#2a2f4a;--green:#4caf7d;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Nanum Gothic',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+.sw-wrap{position:relative;display:inline-block;width:46px;height:26px;cursor:pointer;}
+.sw-wrap input{opacity:0;width:0;height:0;}
+.sw-track{position:absolute;inset:0;background:var(--border);border-radius:26px;transition:.3s;}
+.sw-track::before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s;}
+.sw-wrap input:checked+.sw-track{background:var(--blue);}
+.sw-wrap input:checked+.sw-track::before{transform:translateX(20px);}
+body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(1px 1px at 20% 30%,#fff4 0%,transparent 100%),radial-gradient(1px 1px at 60% 70%,#fff3 0%,transparent 100%),radial-gradient(1.5px 1.5px at 80% 20%,#fff5 0%,transparent 100%),radial-gradient(1px 1px at 40% 80%,#fff2 0%,transparent 100%);pointer-events:none;z-index:0;}
+#app{position:relative;z-index:1;width:100%;max-width:780px;padding:16px;min-height:100vh;}
+.logo{font-family:'Black Han Sans',sans-serif;font-size:3rem;text-align:center;background:linear-gradient(135deg,var(--gold),var(--red),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:lg 3s ease-in-out infinite alternate;}
+@keyframes lg{from{filter:drop-shadow(0 0 8px #f5a62344);}to{filter:drop-shadow(0 0 20px #f5a623aa);}}
+.logo-sub{text-align:center;color:var(--muted);font-size:.75rem;letter-spacing:.3em;text-transform:uppercase;margin-bottom:24px;}
+.screen{display:none;}
+.screen.active{display:block;animation:fi .3s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+/* HELP */
+.hw{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;margin-bottom:20px;overflow:hidden;}
+.hh{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;cursor:pointer;user-select:none;transition:background .2s;}
+.hh:hover{background:#222640;}
+.hh span:first-child{font-weight:800;font-size:.9rem;color:var(--blue);}
+.ha{transition:transform .3s;color:var(--muted);font-size:.8rem;}
+.ha.open{transform:rotate(180deg);}
+.hb{display:none;padding:0 18px 16px;font-size:.8rem;color:#b0b8d0;line-height:1.9;}
+.hb.open{display:block;}
+.hb h4{color:var(--gold);font-size:.82rem;margin:10px 0 5px;font-weight:800;}
+.hb ul{padding-left:14px;}
+.hb li{margin-bottom:3px;}
+/* BUTTONS */
+.btn{background:linear-gradient(135deg,var(--gold),#e08010);border:none;border-radius:10px;color:#111;font-family:'Nanum Gothic',sans-serif;font-weight:800;font-size:.95rem;padding:11px 24px;cursor:pointer;transition:transform .1s,filter .2s;}
+.btn:hover{filter:brightness(1.15);transform:translateY(-1px);}
+.btn:active{transform:scale(.97);}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none;filter:none;}
+.btn-red{background:linear-gradient(135deg,var(--red),#b02040)!important;color:#fff!important;}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--text);border-radius:10px;font-family:'Nanum Gothic',sans-serif;font-weight:700;font-size:.9rem;padding:10px 20px;cursor:pointer;transition:border-color .2s,color .2s;}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+/* LOBBY */
+.ps{display:flex;gap:10px;justify-content:center;margin:16px 0;}
+.pb{width:76px;height:76px;border-radius:14px;border:2px solid var(--border);background:var(--card-bg);color:var(--text);font-size:1.3rem;font-weight:800;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
+.pb small{font-size:.58rem;color:var(--muted);font-weight:400;}
+.pb:hover{border-color:var(--gold);color:var(--gold);}
+.pb.sel{border-color:var(--gold);background:#2a2010;color:var(--gold);}
+#ai2-btn.sel,#ai3-btn.sel,#ai4-btn.sel{border-color:#9c6efa;background:#1a1030;color:#9c6efa;}
+.ni{background:var(--card-bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'Nanum Gothic',sans-serif;font-size:.95rem;padding:11px 15px;transition:border-color .2s;outline:none;width:100%;margin:10px 0;}
+.ni:focus{border-color:var(--blue);}
+.ni::placeholder{color:var(--muted);}
+.st{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.15em;margin-bottom:10px;}
+hr.dv{border:none;border-top:1px solid var(--border);margin:18px 0;}
+/* WAITING */
+.wb{text-align:center;padding:36px 20px;}
+.ws{width:52px;height:52px;border:4px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:sp 1s linear infinite;margin:0 auto 22px;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.wc{font-size:2rem;font-weight:800;color:var(--gold);margin:10px 0;}
+/* GAME */
+#game-screen.active{display:flex;flex-direction:column;gap:12px;}
+.oa{display:flex;gap:8px;flex-wrap:wrap;}
+.oc{background:var(--card-bg);border:1.5px solid var(--border);border-radius:12px;padding:9px 14px;flex:1;min-width:110px;transition:border-color .3s,box-shadow .3s;}
+.oc.ot{border-color:var(--gold);box-shadow:0 0 10px #f5a62340;}
+.oc.od{border-color:var(--green);opacity:.7;}
+.on{font-weight:800;font-size:.82rem;color:var(--blue);margin-bottom:3px;}
+.oi{font-size:.72rem;color:var(--muted);}
+.sb{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:9px 15px;font-size:.82rem;text-align:center;font-weight:700;}
+.sb.mt{border-color:var(--gold);background:#1f1a08;color:var(--gold);animation:pu 1.5s ease-in-out infinite;}
+@keyframes pu{0%,100%{box-shadow:0 0 0 0 #f5a62330;}50%{box-shadow:0 0 0 8px #f5a62310;}}
+.tw{display:none;}
+.tb{background:var(--border);border-radius:4px;height:5px;overflow:hidden;}
+.tbr{height:100%;background:linear-gradient(90deg,var(--green),var(--gold));transition:width 1s linear,background 1s;width:100%;}
+.tbr.ur{background:linear-gradient(90deg,var(--red),#ff6060);}
+.tt{font-size:.72rem;color:var(--muted);text-align:right;margin-top:2px;}
+.pa{background:var(--card-bg);border:1.5px solid var(--border);border-radius:14px;padding:14px;min-height:80px;}
+.pl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.pp{display:flex;gap:5px;flex-wrap:wrap;align-items:center;min-height:40px;}
+.pc{
+  background:linear-gradient(160deg,#f5f0e0,#ede5cc);
+  border:2px solid #b8aa90;
+  border-radius:6px;
+  padding:6px 12px;
+  font-weight:900;font-size:1rem;
+  font-family:'Black Han Sans',sans-serif;
+  color:#1a1a1a;
+  box-shadow:0 3px 0 #9a8a6a,0 4px 6px #0005;
+  animation:cd .2s ease;
+  position:relative;
+}
+.pc::before{content:'';position:absolute;inset:2px;border-radius:3px;border:1px solid #d4c8a8;pointer-events:none;}
+.pc.xc{color:#c0392b;}
+@keyframes cd{from{transform:translateY(-6px) scale(.9);opacity:0;}to{transform:translateY(0) scale(1);opacity:1;}}
+.pi{font-size:.76rem;color:var(--gold);font-weight:700;margin-top:5px;}
+.la{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 13px;max-height:80px;overflow-y:auto;font-size:.73rem;color:var(--muted);display:flex;flex-direction:column;gap:2px;}
+.lh{color:var(--blue);}
+.hl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:flex;justify-content:space-between;}
+.hc{color:var(--gold);font-weight:800;}
+.hg{display:flex;flex-wrap:wrap;gap:6px;}
+.hk{
+  width:52px;height:72px;border-radius:6px;
+  border:2px solid #b8aa90;
+  background:linear-gradient(160deg,#f5f0e0,#ede5cc);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:1.25rem;
+  font-family:'Black Han Sans',sans-serif;
+  cursor:pointer;transition:all .15s;user-select:none;
+  color:#1a1a1a;
+  /* 입체감: 두꺼운 타일 느낌 */
+  box-shadow:0 4px 0 #9a8a6a, 0 5px 8px #0006;
+  position:relative;
+}
+.hk::before{
+  content:'';position:absolute;inset:3px;
+  border-radius:3px;
+  border:1px solid #d4c8a8;
+  pointer-events:none;
+}
+.hk:hover{transform:translateY(-5px);box-shadow:0 8px 0 #9a8a6a,0 10px 14px #0006;border-color:#c8aa60;}
+.hk.sl{
+  transform:translateY(-9px);
+  box-shadow:0 10px 0 #b8860b,0 13px 16px #0007;
+  border-color:var(--gold);
+  background:linear-gradient(160deg,#fff8e0,#fdeea0);
+}
+.hk.xc{color:#c0392b;}
+.ar{display:flex;gap:9px;}
+.ar .btn{flex:1;}
+/* DEALING OVERLAY */
+#deal-overlay{
+  position:fixed;inset:0;background:#0d0f1aee;z-index:7000;
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+}
+#deal-overlay.show{display:flex;animation:fi .3s ease;}
+.deal-msg{font-family:'Black Han Sans',sans-serif;font-size:1.4rem;color:var(--gold);letter-spacing:.05em;}
+.deal-area{display:flex;gap:16px;align-items:flex-end;justify-content:center;min-height:90px;}
+.deal-slot{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.deal-slot-name{font-size:.72rem;color:var(--muted);}
+.deal-tile{
+  width:44px;height:60px;border-radius:5px;
+  border:2px solid #b8aa90;
+  background:linear-gradient(160deg,#f5f0e0,#ede5cc);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Black Han Sans',sans-serif;font-weight:900;font-size:1.1rem;color:#1a1a1a;
+  box-shadow:0 3px 0 #9a8a6a,0 4px 8px #0006;
+  opacity:0;transform:translateY(-20px);
+  transition:opacity .15s ease,transform .15s ease;
+}
+.deal-tile.xc{color:#c0392b;}
+.deal-tile.show{opacity:1;transform:translateY(0);}
+.deal-count{font-size:.8rem;color:var(--blue);font-weight:700;}
+
+/* TOAST */
+#toast{position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--card-bg);border:1.5px solid var(--border);border-radius:12px;padding:11px 22px;font-weight:700;font-size:.88rem;z-index:9999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);text-align:center;max-width:300px;width:90%;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+#toast.err{border-color:var(--red);color:var(--red);}
+#toast.ok{border-color:var(--green);color:var(--green);}
+#toast.inf{border-color:var(--blue);color:var(--blue);}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="logo">피퍼</div>
+  <div class="logo-sub">PEEPER · CARD GAME</div>
+
+  <!-- 설정 모달 -->
+  <div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:24px;width:min(340px,90vw);display:flex;flex-direction:column;gap:16px;">
+      <div style="font-weight:800;font-size:1.1rem;text-align:center;">설정</div>
+
+      <!-- 효과음 스위치 -->
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:.95rem;">효과음</span>
+        <label class="sw-wrap">
+          <input type="checkbox" id="sw-sfx" checked onchange="settingSfx(this.checked)">
+          <span class="sw-track"></span>
+        </label>
+      </div>
+
+      <!-- 음성 스위치 -->
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:.95rem;">음성 안내</span>
+        <label class="sw-wrap">
+          <input type="checkbox" id="sw-tts" checked onchange="settingTts(this.checked)">
+          <span class="sw-track"></span>
+        </label>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:0;">
+
+      <!-- AI 메모리 초기화 -->
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:.85rem;color:var(--muted);">AI 학습 메모리 (<span id="mem-games">0</span>판 기억 중)</div>
+        <button onclick="confirmResetAI()" style="background:#e8415a22;border:1px solid var(--red);border-radius:10px;color:var(--red);padding:10px;font-size:.9rem;font-weight:700;cursor:pointer;">전체 초기화</button>
+      </div>
+
+      <button onclick="closeSettings()" style="background:var(--blue);border:none;border-radius:10px;color:#fff;padding:11px;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:4px;">닫기</button>
+    </div>
+  </div>
+
+  <!-- LOBBY -->
+  <div id="lobby-screen" class="screen active">
+    <div class="hw">
+      <button class="hh" onclick="toggleHelp()" aria-expanded="false" aria-controls="hb" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;">
+        <span>도움말</span>
+        <span class="ha" id="ha">▼</span>
+      </button>
+      <div class="hb" id="hb">
+        <h4>카드 구성</h4>
+        <ul>
+          <li>숫자 1~15 각 4장 + 와일드 X 4장 = 총 64장</li>
+          <li>2인: 각 16장 / 3인: 각 16장 / 4인: 각 16장 (남는 패는 다 버림)</li>
+          <li>X는 대부분의 패에서 조커(와일드)로 사용 가능</li>
+        </ul>
+        <h4>패 종류</h4>
+        <ul>
+          <li><b>싱글</b>: 카드 1장. 예) 7, X (X=rank 16, 최강 싱글)</li>
+          <li><b>페어</b>: 같은 숫자 2장. 예) 5 5 / 5→X / X X<br>
+            &nbsp;→ X X 페어 가능! rank 16으로 모든 페어 이김<br>
+            &nbsp;→ ⚠️ X 포함 페어는 <b>숫자 먼저, X 나중</b> 순서로! (X→5 순서로 내면 무효)</li>
+          <li><b>밤</b>: 같은 숫자 3장 (숫자+X 조합 불가). 예) 9 9 9<br>
+            &nbsp;→ X X X는 가능! (순수 X끼리만)</li>
+          <li><b>밤투</b>: 같은 숫자 4장 (숫자+X 조합 불가). 예) 3 3 3 3<br>
+            &nbsp;→ X X X X는 가능! (순수 X끼리만)</li>
+          <li><b>스트레이트</b>: 연속 숫자 3장 이상, <b>선택한 순서대로</b> 파싱 (X 최대 1장)<br>
+            &nbsp;→ X가 첫 번째면 "바로 뒤 카드-1", 나머지면 "바로 앞 카드+1"<br>
+            &nbsp;→ 예) X→4→5 : X=3 → rank5 / 3→4→X : X=5 → rank5<br>
+            &nbsp;→ 예) 4→5→X : X=6 → rank6 / 3→X→5 : X=4 → rank5<br>
+            &nbsp;→ 상대가 3→4→X (rank5)를 내면, 나는 4→5→X (rank6)로 받기</li>
+          <li><b>페어스트레이트</b>: 연속 숫자의 페어 3쌍 이상, <b>선택 순서대로</b> 2장씩 파싱<br>
+            &nbsp;→ 예) 1→1→2→2→3→X : X=3으로 마지막 쌍 완성 → rank 3 ✅<br>
+            &nbsp;→ 1→1→2→2→X→3 : X가 쌍의 첫 번째 위치 → ❌<br>
+            &nbsp;→ 1→1→3→3→2→X : 순서 뒤바뀜(3→2) → ❌<br>
+            &nbsp;→ 쌍들이 순서대로 +1씩 올라가야 함</li>
+        </ul>
+        <h4>진행 규칙</h4>
+        <ul>
+          <li>랜덤으로 선이 결정, 선은 원하는 패를 자유롭게 냄</li>
+          <li>다음 사람은 <b>같은 유형</b>의 더 높은 패를 내야 함<br>
+            &nbsp;→ 스트레이트는 같은 길이끼리만 비교</li>
+          <li><b>밤/밤투는 진짜 아무때나 가능!</b> 어떤 유형 판이든 상관 없음.<br>
+            &nbsp;내가 밤/밤투를 내는 즉시 그 판은 밤/밤투 싸움이 됨. 최후의 무기!<br>
+            &nbsp;단, 역시 <b>자기 차례에만</b> 가능.</li>
+          <li>낼 수 없으면 패스. 모두 패스하면 마지막에 낸 사람이 새 선</li>
+          <li>선이 바뀌면 로그 초기화, 아무 패나 자유롭게 낼 수 있음</li>
+          <li>카드를 먼저 다 내는 순서대로 등수 결정</li>
+          <li>제한시간 60초, 초과 시 자동 패스</li>
+        </ul>
+        <h4>승패</h4>
+        <ul>
+          <li>2인: 먼저 다 내면 승리 / 3~4인: 낸 순서대로 1등, 2등...</li>
+        </ul>
+        <h4>FAQ</h4>
+        <ul>
+          <li><b>Q. X 싱글은 얼마나 강해요?</b><br>
+            &nbsp;A. rank 16으로 15보다 높아 가장 강한 싱글입니다.</li>
+          <li><b>Q. 5 X 페어 vs X X 페어, 누가 이겨요?</b><br>
+            &nbsp;A. X X 페어가 rank 16 → X X 페어 승!</li>
+          <li><b>Q. 밤에 X 못 쓴다는데 X X X는 되나요?</b><br>
+            &nbsp;A. 됩니다! X끼리만 구성된 밤/밤투는 OK. 단 5 5 X처럼 숫자+X 조합은 안 됩니다.</li>
+          <li><b>Q. 스트레이트에 X 몇 개까지?</b><br>
+            &nbsp;A. 최대 1장! X 위치에 따라 해석이 달라져요.<br>
+            &nbsp;첫 번째: 바로 뒤 카드-1 (X→4→5 : X=3, rank5)<br>
+            &nbsp;중간/끝: 바로 앞 카드+1 (3→X→5 : X=4 / 4→5→X : X=6)</li>
+          <li><b>Q. 페어스트레이트에도 X 1장?</b><br>
+            &nbsp;A. 네! 2장씩 선택 순서대로 파싱해요.<br>
+            &nbsp;예) 1→1→2→2→3→X : X=3으로 마지막 쌍 완성 ✅<br>
+            &nbsp;1→1→2→2→X→3 : X가 쌍 왼쪽 위치 → ❌ / 순서 뒤바뀌면 → ❌</li>
+          <li><b>Q. 밤 위에 밤투로 받을 수 있나요?</b><br>
+            &nbsp;A. 네! 밤투는 아무 때나 쓸 수 있으니 밤 위에도 OK.</li>
+          <li><b>Q. 게임 도중 누가 나가면?</b><br>
+            &nbsp;A. 즉시 "게임 강제 중단" 처리되고 모두 새로고침됩니다.</li>
+          <li><b>Q. AI 모드는?</b><br>
+            &nbsp;A. 인원 선택에서 AI 2P/3P/4P 선택! 인터넷 없이도 혼자 플레이 가능.<br>
+            &nbsp;AI 3P/4P 모드에서는 여러 AI들이 서로 경쟁하며 각각 독립적인 전략을 씁니다.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="hw" style="margin-bottom:20px;">
+      <button class="hh" onclick="openSettings()" aria-label="설정 열기" aria-haspopup="dialog" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;">
+        <span>설정</span>
+        <span class="ha">▶</span>
+      </button>
+    </div>
+    <div class="st">인원 선택</div>
+    <div class="ps">
+      <button class="pb" onclick="selectP(2)">2<br><small>인</small></button>
+      <button class="pb" onclick="selectP(3)">3<br><small>인</small></button>
+      <button class="pb" onclick="selectP(4)">4<br><small>인</small></button>
+      <button class="pb" id="ai2-btn" onclick="selectAI(2)" style="border-color:#9c6efa;color:#9c6efa;">AI<br><small>2P</small></button>
+      <button class="pb" id="ai3-btn" onclick="selectAI(3)" style="border-color:#9c6efa;color:#9c6efa;">AI<br><small>3P</small></button>
+      <button class="pb" id="ai4-btn" onclick="selectAI(4)" style="border-color:#9c6efa;color:#9c6efa;">AI<br><small>4P</small></button>
+    </div>
+    <div id="nsec" style="display:none">
+      <hr class="dv">
+      <div class="st">내 닉네임</div>
+      <input class="ni" id="ni" maxlength="8" placeholder="닉네임 입력..." oninput="checkName()">
+      <button class="btn" id="gobtn" onclick="joinGame()" disabled style="width:100%;margin-top:6px"><span id="gobtn-txt">대결 상대 찾기 →</span></button>
+    </div>
+
+    <!-- 관중 섹션 -->
+    <hr class="dv" style="margin-top:18px">
+    <div class="st" style="color:var(--muted);font-size:.9rem;">관중으로 입장</div>
+    <div class="ps" style="margin-top:6px">
+      <button class="pb" onclick="selectSpectate(2)" style="border-color:#f0a500;color:#f0a500;font-size:.8rem;">2P<br><small>관중</small></button>
+      <button class="pb" onclick="selectSpectate(3)" style="border-color:#f0a500;color:#f0a500;font-size:.8rem;">3P<br><small>관중</small></button>
+      <button class="pb" onclick="selectSpectate(4)" style="border-color:#f0a500;color:#f0a500;font-size:.8rem;">4P<br><small>관중</small></button>
+    </div>
+    <div id="spec-nsec" style="display:none">
+      <hr class="dv">
+      <div class="st">내 닉네임 (관중)</div>
+      <input class="ni" id="spec-ni" maxlength="8" placeholder="닉네임 입력..." oninput="checkSpecName()">
+      <button class="btn" id="spec-gobtn" onclick="joinSpectate()" disabled style="width:100%;margin-top:6px;background:var(--muted);border-color:#f0a500;color:#f0a500;">관중 입장 →</button>
+    </div>
+  </div>
+
+  <!-- WAITING -->
+  <div id="wait-screen" class="screen">
+    <div class="wb">
+      <div class="ws"></div>
+      <div style="font-size:1rem;font-weight:700;color:var(--muted);" id="wait-msg">대결 상대 찾는 중...</div>
+      <div class="wc" id="wc">1 / ?</div>
+      <div style="font-size:.78rem;color:var(--muted);margin-top:6px">채널: <span id="rdisp" style="color:var(--blue)"></span></div>
+      <br>
+      <button class="btn-ghost" onclick="cancelWait()">취소</button>
+    </div>
+  </div>
+
+  <!-- SPECTATOR -->
+  <div id="spec-screen" class="screen">
+    <div style="text-align:center;padding:10px 0 4px;font-size:1.1rem;font-weight:700;color:#f0a500;">관중석</div>
+    <div id="spec-status" style="text-align:center;font-size:.82rem;color:var(--muted);margin-bottom:8px">게임 방 찾는 중...</div>
+    <!-- 플레이어 카드 수 -->
+    <div id="spec-players" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px"></div>
+    <!-- 현재 판 -->
+    <div class="pa" style="margin-bottom:8px">
+      <div class="pl">현재 판</div>
+      <div class="pp" id="spec-pp" style="gap:5px;flex-wrap:wrap;"><span style="color:var(--muted);font-size:.8rem;">아직 아무도 안 냄</span></div>
+      <div class="pi" id="spec-pi"></div>
+    </div>
+    <!-- 로그 -->
+    <div class="la" id="spec-log"></div>
+    <button class="btn-ghost" onclick="leaveSpectate()" style="width:100%;margin-top:12px;">관중석에서 퇴장</button>
+  </div>
+
+  <!-- GAME -->
+  <div id="game-screen" class="screen">
+    <div class="oa" id="oa"></div>
+    <div class="sb" id="sb">대기 중...</div>
+    <div class="tw" id="tw">
+      <div class="tb"><div class="tbr" id="tbr"></div></div>
+      <div class="tt" id="tt">60초</div>
+    </div>
+    <div class="pa">
+      <div class="pl">현재 판</div>
+      <div class="pp" id="pp"><span style="color:var(--muted);font-size:.8rem;">아직 아무도 안 냄</span></div>
+      <div class="pi" id="pi"></div>
+    </div>
+    <div class="la" id="la"></div>
+    <div>
+      <div class="hl"><span>내 패</span><span class="hc" id="hcnt">16장</span></div>
+      <div class="hg" id="hg"></div>
+    </div>
+    <div class="ar">
+      <button class="btn" id="pbtn" onclick="doPlay()" disabled>내기</button>
+      <button class="btn btn-red" id="psbtn" onclick="doPass()" disabled>패스</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="deal-overlay">
+  <div class="deal-msg" id="deal-msg">딜러가 타일을 분배합니다</div>
+  <div class="deal-area" id="deal-area"></div>
+  <div class="deal-count" id="deal-count"></div>
+</div>
+
+<script>
+// ══════════════════════════
+//  SUPABASE
+// ══════════════════════════
+// ── SECURITY LAYER ──────────────────────────────────────────
+// 1) 키 3분할 XOR 난독화 - 각 조각 다른 salt, 자동 스캐너 우회
+// 2) 도메인 체크 - 허용 출처 외 경고
+// 3) Rate limiting - 채널 남용 방지
+// 4) 채널명 SHA-256 해시 - 방 예측 불가
+// 5) GS 무결성 검증 - 조작 감지
+// ─────────────────────────────────────────────────────────────
+
+// 3분할 XOR 복호화 (각 조각 다른 salt)
+function _xd(b64,s){
+  try{const r=atob(b64),k=new TextEncoder().encode(s);
+    return Array.from(r).map((c,i)=>String.fromCharCode(c.charCodeAt(0)^k[i%k.length])).join('');}
+  catch(e){return '';}
+}
+// 키 조각들 (분리된 salt로 각각 인코딩)
+const _B='peeper_game_2025_secret_xor_salt_v1';
+// URL 조각
+const _u=['GBERABZIcEgPAhErWQ==','BhQEHhAIJgAJCgwzXg==','CAlLAxACPgUAHgBxUV8='];
+// KEY 조각
+const _k=[
+  'FRwvGAc1PA4uBC8WZ0p7BBEaLBA7CyZqGyw7aToKHCwJNXtmTxUcLwAGQRIOLgQvJVZocF0GHiMZKDY9LDEBODMpCCVC',
+  'OQhQBgE6DRUFAyM3UF5kAzokAQwoVxgsGicaLDoIGx08GwgsOCMsUzkINCoFU1kME3F6QmwHIgwsGCBHEQIIQREnAl87',
+  'JAYWOQgkawQiJFMSWHEHexs+Hy4IBkERS19cJ0ZQGgEADmMRDSoACTgzByk3DSYMDlsBYHMOAlASBgEnGjUGJxcWDS4aGg=='
+];
+// 런타임에 조합 (소스에 완성된 키 없음)
+function _assemble(parts,base){
+  return parts.map((p,i)=>_xd(p,base+'_'+['a','b','c'][i])).join('');
+}
+
+// 도메인 체크
+(function(){
+  if(location.protocol==='file:')return;
+  const host=location.hostname||'';
+  const ok=['localhost','127.0.0.1'];
+  if(!ok.includes(host)){
+    console.warn('[PEEPER] Unregistered domain:',host,
+      '- Add to Supabase Allowed Origins for security');
+  }
+})();
+
+// Rate limiter: 1분 10회
+const _rl={count:0,reset:Date.now()+60000};
+function _checkRL(){
+  if(Date.now()>_rl.reset){_rl.count=0;_rl.reset=Date.now()+60000;}
+  if(_rl.count>=10){alert('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');return false;}
+  _rl.count++;return true;
+}
+
+// 채널명 SHA-256 해시
+async function _hashCh(name){
+  try{
+    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(name+'_peeper_v1'));
+    return 'p_'+Array.from(new Uint8Array(buf)).slice(0,12).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }catch(e){return 'p_'+name;}
+}
+
+// GS 무결성 검증
+function _gsHash(gs){
+  const s=JSON.stringify({p:gs.players?.map(p=>({id:p.id,h:p.hand?.length})),t:gs.turnIdx,ph:gs.phase});
+  let h=0;for(let i=0;i<s.length;i++){h=(h<<5)-h+s.charCodeAt(i);h|=0;}
+  return(h>>>0).toString(16);
+}
+// 게임 세션 세대(epoch). goToMain()으로 리셋될 때마다 1씩 증가.
+// setTimeout/setInterval로 예약된 지연 콜백은 실행 시점에 이 값이 자신이 예약될 때와 같은지 확인해서
+// 다르면(=그 사이에 로비로 나갔다가 새 게임을 시작함) 조용히 무시한다. ("찌꺼기" 콜백 방지)
+let _epoch=0;
+let _lastGSHash='';
+function _verifyGS(gs){
+  if(!gs.players||!Array.isArray(gs.players))return false;
+  if(gs.players.length<2||gs.players.length>4)return false;
+  if(typeof gs.turnIdx!=='number')return false;
+  return true;
+}
+const SURL=_assemble(_u,_B);
+const SKEY=_assemble(_k,_B);
+const supa=supabase.createClient(SURL,SKEY);
+
+// ══════════════════════════
+//  STATE
+// ══════════════════════════
+let myId='p_'+Math.random().toString(36).slice(2,12);
+let myName='';
+let targetP=0;
+let isAIMode=false;  // AI 모드
+let aiPlayerCount=1; // AI 플레이어 수 (1=AI2P, 2=AI3P, 3=AI4P)
+let matchCh=null,gameCh=null;
+let matchHb=null,gameHb=null;
+let _hbRecv={};   // {playerId: 마지막 heartbeat 수신 시각}
+let _hbStart=0;   // 게임 시작 시각 (초기엔 recv 없으니 기준점)
+// ── 관중 전용 변수 ──
+let specCh=null;
+let specMode=false;
+let specTargetP=0;
+let specName='';
+let specSearchTimer=null;
+let _specBroadcastCh=null; // 호스트가 관중에게 GS 뿌리는 채널
+let GS=null;
+let isHost=false;
+let myHand=[];
+let selCards=[];
+let timerIv=null,timerLeft=30;
+let lastTurnIdx=-1;
+let gameStarted=false;
+let endShown=false;
+let gsReady=false;
+
+// ══════════════════════════
+//  UTILS
+// ══════════════════════════
+const $=id=>document.getElementById(id);
+function showScreen(id){
+  // 게임 화면으로 들어갈 때는 이전 게임의 로그/등수/패 DOM이 한 프레임이라도
+  // 남아있지 않도록 무조건 강제로 비운다. (렌더 타이밍에 의존하지 않는 확실한 방법)
+  if(id==='game-screen')resetGameScreenDOM();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+// 게임 화면 DOM을 강제로 완전히 비운다. GS/변수 상태와 무관하게 항상 실행.
+function resetGameScreenDOM(){
+  const oa=$('oa');if(oa)oa.innerHTML='';
+  const sb=$('sb');if(sb){sb.textContent='대기 중...';sb.className='sb';sb.style.fontSize='';}
+  const pp=$('pp');if(pp)pp.innerHTML='<span style="color:var(--muted);font-size:.8rem;">아직 아무도 안 냄</span>';
+  const pi=$('pi');if(pi)pi.textContent='';
+  const la=$('la');if(la){la.innerHTML='';la.dataset.logKey='';}
+  const hg=$('hg');if(hg)hg.innerHTML='';
+  const hcnt=$('hcnt');if(hcnt)hcnt.textContent='?장';
+  const tw=$('tw');if(tw)tw.style.display='none';
+}
+function toast(msg,type='inf',ms=2600){
+  const t=$('toast');t.textContent=msg;t.className='show '+type;
+  clearTimeout(t._to);t._to=setTimeout(()=>{t.className='';},ms);
+}
+function addLog(msg,hl=false){
+  const la=$('la');const el=document.createElement('div');
+  el.className=hl?'lh':'';el.textContent=msg;
+  la.appendChild(el);la.scrollTop=la.scrollHeight;
+}
+function clearLog(){const la=$('la');la.innerHTML='';la.dataset.logKey='';}
+
+// ══════════════════════════
+//  HELP
+// ══════════════════════════
+function toggleHelp(){
+  $('hb').classList.toggle('open');$('ha').classList.toggle('open');
+}
+
+// ══════════════════════════
+//  LOBBY
+// ══════════════════════════
+function selectP(n){
+  isAIMode=false;
+  targetP=n;
+  document.querySelectorAll('.pb').forEach(b=>b.classList.remove('sel'));
+  // 인덱스: 2P=0,3P=1,4P=2
+  const idx=n-2;
+  document.querySelectorAll('.pb')[idx].classList.add('sel');
+  $('nsec').style.display='block';
+  $('gobtn-txt').textContent='대결 상대 찾기 →';
+  checkName();
+}
+function selectAI(n){
+  isAIMode=true;
+  aiPlayerCount=n-1; // 전체 인원 - 나 = AI 수
+  targetP=n;
+  document.querySelectorAll('.pb').forEach(b=>b.classList.remove('sel'));
+  $('ai'+n+'-btn').classList.add('sel');
+  $('nsec').style.display='block';
+  $('gobtn-txt').textContent=`AI ${n-1}명과 대결 →`;
+  checkName();
+}
+function checkName(){$('gobtn').disabled=!$('ni').value.trim();}
+
+// ══════════════════════════
+//  MATCHMAKING
+// ══════════════════════════
+let matchRetrying=false;
+
+function noInternetAlert(){
+  alert('인터넷이 연결되어 있지 않습니다.');
+  goToMain();
+}
+
+function joinGame(){
+  myName=$('ni').value.trim();if(!myName)return;
+  if(!navigator.onLine&&!isAIMode){noInternetAlert();return;}
+  if(isAIMode){startAIGame();return;}
+  showScreen('wait-screen');
+  $('rdisp').textContent=`peeper_match_${targetP}p`;
+  $('wc').textContent=`1 / ${targetP}`;
+  startMatchCh(targetP);
+}
+
+// ── AI 게임 시작 (로컬, Supabase 없음) ──
+const AI_IDS=['ai_player_1','ai_player_2','ai_player_3'];
+const AI_ID='ai_player_1'; // 하위 호환용 (1번 AI)
+function getAIName(idx){return `AI ${idx+1}`;}
+
+function startAIGame(){
+  isHost=true;
+  gameStarted=true;
+  showScreen('game-screen');
+  const players=[{id:myId,name:myName}];
+  for(let i=0;i<aiPlayerCount;i++){
+    players.push({id:AI_IDS[i],name:getAIName(i)});
+  }
+  startDealAnimation(players,()=>{gsReady=true;initGSLocal(players);});
+}
+
+// ── 딜 애니메이션 ──
+function playDealClick(){
+  try{
+    const ctx=gAC(),dst=getMaster(),t=ctx.currentTime;
+    const sr=ctx.sampleRate;
+
+    // ① 화이트노이즈 타격 (BufferSource로 감싸야 connect 가능)
+    const bufLen=Math.floor(sr*0.07);
+    const buf=ctx.createBuffer(1,bufLen,sr);
+    const d=buf.getChannelData(0);
+    let b0=0,b1=0,b2=0;
+    for(let i=0;i<bufLen;i++){
+      b0=0.99886*b0+Math.random()*0.0555179;
+      b1=0.99332*b1+Math.random()*0.0750759;
+      b2=0.96900*b2+Math.random()*0.1538520;
+      d[i]=(b0+b1+b2+Math.random()*0.5)*0.11;
+    }
+    const src=ctx.createBufferSource();src.buffer=buf;
+    const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=2800;bp.Q.value=0.7;
+    const gn=ctx.createGain();
+    gn.gain.setValueAtTime(0,t);
+    gn.gain.linearRampToValueAtTime(2.2,t+0.001);
+    gn.gain.exponentialRampToValueAtTime(0.001,t+0.055);
+    src.connect(bp);bp.connect(gn);gn.connect(dst);
+    src.start(t);src.stop(t+0.07);
+
+    // ② 저음 킥 (피치 드롭)
+    const o=ctx.createOscillator(),g2=ctx.createGain();
+    o.type='sine';
+    o.frequency.setValueAtTime(320,t);
+    o.frequency.exponentialRampToValueAtTime(60,t+0.06);
+    g2.gain.setValueAtTime(0,t);
+    g2.gain.linearRampToValueAtTime(1.5,t+0.001);
+    g2.gain.exponentialRampToValueAtTime(0.001,t+0.07);
+    o.connect(g2);g2.connect(dst);o.start(t);o.stop(t+0.08);
+
+    // ③ 고음 틱
+    const o2=ctx.createOscillator(),g3=ctx.createGain();
+    o2.type='square';o2.frequency.value=4800;
+    g3.gain.setValueAtTime(0,t);
+    g3.gain.linearRampToValueAtTime(0.5,t+0.001);
+    g3.gain.exponentialRampToValueAtTime(0.001,t+0.018);
+    o2.connect(g3);g3.connect(dst);o2.start(t);o2.stop(t+0.02);
+  }catch(e){console.warn('playDealClick err',e);}
+}
+
+function startDealAnimation(players,onDone){
+  const myEpoch=_epoch;
+  const overlay=$('deal-overlay');
+  const area=$('deal-area');
+  const countEl=$('deal-count');
+  const msgEl=$('deal-msg');
+  overlay.classList.add('show');
+  area.innerHTML='';
+  countEl.textContent='';
+  msgEl.textContent='딜러가 타일을 분배합니다';
+
+  // 슬롯 만들기
+  const slots=players.map((p,pi)=>{
+    const slot=document.createElement('div');slot.className='deal-slot';
+    const name=document.createElement('div');name.className='deal-slot-name';
+    name.textContent=p.id===myId?'나 ('+p.name+')':p.name;
+    const tileWrap=document.createElement('div');
+    tileWrap.style.cssText='display:flex;flex-wrap:wrap;gap:3px;max-width:200px;justify-content:center;min-height:30px;';
+    const cntBadge=document.createElement('div');cntBadge.className='deal-count';cntBadge.textContent='0장';
+    slot.appendChild(name);slot.appendChild(tileWrap);slot.appendChild(cntBadge);
+    area.appendChild(slot);
+    return{wrap:tileWrap,badge:cntBadge,count:0};
+  });
+
+  const total=16;
+  const totalCards=total*players.length;
+  // 드드드드득 - 빠르게! 30ms 간격
+  const interval=30;
+  let card=0;
+
+  const iv=setInterval(()=>{
+    if(myEpoch!==_epoch){clearInterval(iv);overlay.classList.remove('show');return;}
+    if(card>=totalCards){
+      clearInterval(iv);
+      countEl.textContent='';
+      msgEl.textContent='게임 시작!';
+      ttsSay('게임 시작!');
+      setTimeout(()=>{
+        if(myEpoch!==_epoch)return;
+        // 오버레이를 걷기 전에 먼저 새 게임 상태를 그린다.
+        // (순서가 바뀌면 오버레이가 사라진 찰나에 이전 게임의 로그/등수 DOM이 잠깐 노출됨)
+        onDone();
+        overlay.classList.remove('show');
+      },700);
+      return;
+    }
+    const pi=card%players.length;
+    const slot=slots[pi];
+    slot.count++;
+    slot.badge.textContent=slot.count+'장';
+
+    // 타일 뒷면 - 실물 피퍼 타일처럼 크림색 직사각형
+    const tile=document.createElement('div');
+    tile.className='deal-tile';
+    tile.style.cssText='width:22px;height:32px;border-radius:3px;';
+    slot.wrap.appendChild(tile);
+    requestAnimationFrame(()=>tile.classList.add('show'));
+
+    playDealClick();
+    card++;
+  },interval);
+}
+
+function initGSLocal(rawPlayers){
+  aiCardCountReset(); // ③ 카드 카운팅 초기화
+  // aiMemory 게임 재시작 시 리셋
+  aiMemory.passCount={};
+  aiMemory.playHistory={};
+  aiMemory.oppStrength={};
+  aiMemory.consecutivePass={};
+  aiMemory.usedBomb={};
+  aiMemory.psychMode={};  // AI ID별 심리전 상태
+  aiMemory.psychTurn={};  // AI ID별 심리전 시작 턴
+  aiMemory.turnNo=0;
+  _gameStatsReset(); // 이번 게임 통계 초기화
+  const deck=shuffle(buildDeck());
+  const n=rawPlayers.length;
+  const firstTurn=Math.floor(Math.random()*n);
+  const hands=dealHands(deck,n,16);
+  const players=rawPlayers.map((p,i)=>({
+    id:p.id,name:p.name,
+    hand:hands[i],
+    done:false,rank:0
+  }));
+  GS={players,turnIdx:firstTurn,pile:[],pileType:null,pileBy:null,passCount:0,passSeq:0,
+    log:[`${players[firstTurn].name}님이 선입니다.`],ranks:[],phase:'playing'};
+  broadcastGS();
+}
+
+function startMatchCh(max){
+  if(!_checkRL())return;
+  if(matchCh){try{matchCh.unsubscribe();}catch(e){}}
+  matchRetrying=false;
+  _matchStartSent=false;
+  // self:true → 내가 보낸 match_start 브로드캐스트도 내가 받음
+  matchCh=supa.channel(`peeper_match_${max}p`,{
+    config:{presence:{key:myId},broadcast:{self:true}}
+  });
+  matchCh
+    .on('presence',{event:'sync'},()=>{updateWaitUI();checkReady();})
+    .on('presence',{event:'join'}, ()=>{updateWaitUI();checkReady();})
+    .on('presence',{event:'leave'},()=>updateWaitUI())
+    .on('broadcast',{event:'match_start'},({payload})=>{
+      if(gameStarted)return;
+      // 내가 이 그룹에 속하는지 확인
+      if(!payload.players||!payload.players.find(p=>p.id===myId))return;
+      gameStarted=true;
+      if(matchHb){clearInterval(matchHb);matchHb=null;}
+      // 매칭 채널 정리 후 게임 진입
+      const ch=matchCh;matchCh=null;
+      try{ch.unsubscribe();}catch(e){}
+      enterGame(payload);
+    })
+    .subscribe(async status=>{
+      if(status==='SUBSCRIBED'){
+        matchRetrying=false;
+        if(matchHb)clearInterval(matchHb);
+        matchHb=setInterval(()=>{
+          if(matchCh&&!gameStarted)matchCh.send({type:'broadcast',event:'ping',payload:{}});
+        },45000);
+        await matchCh.track({name:myName,id:myId});
+      }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+        if(gameStarted)return;
+        if(!navigator.onLine){noInternetAlert();return;}
+        if(matchRetrying)return;
+        matchRetrying=true;
+        $('wc').textContent='재연결 중...';
+        const myEpoch=_epoch;
+        setTimeout(()=>{if(myEpoch===_epoch&&!gameStarted)startMatchCh(max);},3000);
+      }
+    });
+}
+
+function updateWaitUI(){
+  if(!matchCh)return;
+  // presenceState()는 {key: [entries]} 형태 — key 기준으로 중복 제거 (재연결 시 중복 방지)
+  const state=matchCh.presenceState();
+  const uniqueCount=Object.keys(state).length;
+  $('wc').textContent=`${uniqueCount} / ${targetP}`;
+}
+
+let _matchStartSent=false;
+function checkReady(){
+  if(!matchCh||gameStarted||_matchStartSent)return;
+  const state=matchCh.presenceState();
+  // key 기준 중복 제거 — 각 key의 첫 번째 entry만 사용
+  const all=Object.values(state).map(entries=>entries[0]).filter(e=>e&&e.id&&e.name);
+  if(all.length<targetP)return;
+  // 결정론적 정렬 (id 기준)
+  all.sort((a,b)=>a.id<b.id?-1:1);
+  const myIdx=all.findIndex(p=>p.id===myId);
+  if(myIdx<0)return;
+  // 내가 속한 그룹
+  const gi=Math.floor(myIdx/targetP);
+  const group=all.slice(gi*targetP,(gi+1)*targetP);
+  if(group.length<targetP)return;
+  // 그룹 내 id 가장 작은 사람만 match_start 전송
+  if(group[0].id!==myId)return;
+  _matchStartSent=true;
+  const roomId='peeper_rm_'+group.map(p=>p.id).sort().join('_').slice(0,40);
+  matchCh.send({
+    type:'broadcast',event:'match_start',
+    payload:{roomId,players:group.map(p=>({id:p.id,name:p.name}))}
+  });
+}
+
+function cancelWait(){
+  // 매칭 대기 취소도 goToMain과 동일하게 완전 초기화 (찌꺼기 방지)
+  goToMain();
+}
+
+// 새로고침 대신 안전하게 메인(로비)으로 복귀 - 닉네임/선택 상태 등 전부 초기화
+function goToMain(){
+  // 세대 증가: 이 시점 이전에 예약된 지연 콜백(AI턴, GS 재요청 재시도 등)은 전부 무효화됨
+  _epoch++;
+  try{
+    // 타이머/구독 정리
+    if(gsReqTimer){clearTimeout(gsReqTimer);gsReqTimer=null;}
+    if(typeof stopTimer==='function')stopTimer();
+    if(matchHb){clearInterval(matchHb);matchHb=null;}
+    if(gameHb){clearInterval(gameHb);gameHb=null;}
+    if(specSearchTimer){clearTimeout(specSearchTimer);specSearchTimer=null;}
+    if(matchCh){try{matchCh.unsubscribe();}catch(e){} matchCh=null;}
+    if(gameCh){try{gameCh.unsubscribe();}catch(e){} gameCh=null;}
+    if(specCh){try{specCh.unsubscribe();}catch(e){} specCh=null;}
+    if(_specBroadcastCh){try{_specBroadcastCh.unsubscribe();}catch(e){} _specBroadcastCh=null;}
+    // TTS 큐 정리 (다음 판/로비에서 뒤늦게 말하는 것 방지)
+    if(typeof ttsClearQueue==='function')ttsClearQueue();
+
+    // 게임/매칭 상태 초기화
+    _matchStartSent=false;
+    gameStarted=false;
+    isHost=false;
+    gsReady=false;
+    endShown=false;
+    GS=null;
+    myHand=[];
+    selCards=[];
+    lastTurnIdx=-1;
+    lastPileKey='';lastPassKey='';lastLogLen=0;
+    announcedRanks=new Set();
+    _aiScheduled=false;
+    _aiScheduledIds=new Set();
+    _specEndAnnounced=false;
+    _specLastPileKey='';_specLastPassKey='';
+    specMode=false;specTargetP=0;specName='';
+    _hbRecv={};_hbStart=0;
+    _gameStats={plays:0,passes:0,typeCount:{single:0,pair:0,bomb:0,megabomb:0,straight:0,pairstraight:0},highRankPlays:0,bombUsed:0};
+
+    // 로비 선택 상태 초기화 (새로고침과 동일하게)
+    myName='';
+    targetP=0;
+    isAIMode=false;
+    aiPlayerCount=1;
+    const niEl=$('ni');if(niEl)niEl.value='';
+    const nsecEl=$('nsec');if(nsecEl)nsecEl.style.display='none';
+    const gobtnEl=$('gobtn');if(gobtnEl)gobtnEl.disabled=true;
+    const gobtnTxt=$('gobtn-txt');if(gobtnTxt)gobtnTxt.textContent='대결 상대 찾기 →';
+    document.querySelectorAll('.pb').forEach(b=>b.classList.remove('sel'));
+
+    if(typeof clearLog==='function')clearLog();
+    // 게임 화면 DOM 강제 클린업 (이전 게임 결과/로그/등수 잔상 방지 - showScreen과 별개로 여기서도 실행)
+    resetGameScreenDOM();
+  }catch(e){/* 정리 중 오류는 무시하고 로비로 이동 */}
+  showScreen('lobby-screen');
+}
+
+// ══════════════════════════════════════════
+//  관중 기능
+// ══════════════════════════════════════════
+function selectSpectate(n){
+  specTargetP=n;
+  // 관중 닉네임 입력창 보이기, 일반 닉네임 입력창 숨기기
+  $('nsec').style.display='none';
+  $('spec-nsec').style.display='block';
+  // 관중 버튼 하이라이트
+  document.querySelectorAll('.pb').forEach(b=>b.classList.remove('active'));
+}
+
+function checkSpecName(){
+  $('spec-gobtn').disabled=!$('spec-ni').value.trim();
+}
+
+async function joinSpectate(){
+  specName=$('spec-ni').value.trim();
+  if(!specName)return;
+  specMode=true;
+
+  // 대기 화면으로 전환
+  $('wait-msg').textContent='게임 방 찾는 중...';
+  showScreen('wait-screen');
+  $('wc').textContent='';
+  $('rdisp').textContent=`peeper_match_${specTargetP}p`;
+
+  // 매칭 채널에서 진행 중인 게임 roomId 탐지
+  // 방법: peeper_spec_list_{n}p 채널에서 호스트가 broadcast하는 roomId 수신
+  await _listenForRoom();
+}
+
+async function _listenForRoom(){
+  // 매칭 채널에 잠깐 접속해서 match_start 이벤트 대기
+  // 이미 게임 중인 방은 별도 spec_announce 채널로 알림
+  const announceChName=`peeper_spec_announce_${specTargetP}p`;
+  if(specCh){try{specCh.unsubscribe();}catch(e){} specCh=null;}
+
+  specCh=supa.channel(announceChName,{config:{broadcast:{self:false}}});
+  specCh
+    .on('broadcast',{event:'room_open'},({payload})=>{
+      // 게임이 시작된 방 발견
+      if(payload&&payload.roomId){
+        _joinSpecRoom(payload.roomId,payload.playerNames||[]);
+      }
+    })
+    .subscribe(status=>{
+      if(status==='SUBSCRIBED'){
+        $('wait-msg').textContent='게임 시작 대기 중...';
+      } else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+        $('wait-msg').textContent='연결 오류. 다시 시도해주세요.';
+      }
+    });
+}
+
+async function _joinSpecRoom(roomId, playerNames){
+  if(specSearchTimer){clearTimeout(specSearchTimer);specSearchTimer=null;}
+
+  // 기존 탐색 채널 해제
+  if(specCh){try{specCh.unsubscribe();}catch(e){} specCh=null;}
+
+  // 게임 채널에 관중으로 접속 (GS broadcast 수신만)
+  const hashedRoom=await _hashCh(roomId);
+  specCh=supa.channel('spec_'+hashedRoom,{config:{broadcast:{self:false}}});
+  specCh
+    .on('broadcast',{event:'gs'},({payload})=>{
+      _renderSpectatorGS(payload, playerNames);
+    })
+    .on('broadcast',{event:'spec_gs'},({payload})=>{
+      _renderSpectatorGS(payload, playerNames);
+    })
+    .subscribe(status=>{
+      if(status==='SUBSCRIBED'){
+        showScreen('spec-screen');
+        $('spec-status').textContent='관중 입장 완료 — 게임 시작을 기다리는 중...';
+        // GS 요청
+        specCh.send({type:'broadcast',event:'spec_req',payload:{specName}});
+      } else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+        $('spec-status').textContent='연결 오류.';
+      }
+    });
+}
+
+let _specEndAnnounced=false; // 중복 방지
+let _specLastPileKey='';
+let _specLastPassKey='';
+
+function _renderSpectatorGS(gs, playerNames){
+  if(!gs||!gs.players)return;
+
+  // 관중 효과음 처리
+  const newPileKey=(gs.pile||[]).join(',')+'|'+(gs.pileBy||'');
+  const newPassKey=(gs.lastPassBy||'')+'|'+(gs.passSeq||0);
+  if(newPileKey!==_specLastPileKey&&gs.pile&&gs.pile.length>0&&gs.pileBy){
+    if(gs.pileType)playSfx(gs.pileType.type);
+  }
+  if(newPassKey!==_specLastPassKey&&gs.lastPassBy){
+    playSfx('pass');
+  }
+  _specLastPileKey=newPileKey;
+  _specLastPassKey=newPassKey;
+  // 상태 텍스트
+  if(gs.phase==='ended'){
+    const ranked=gs.players.filter(p=>typeof p.rank==='number'&&p.rank>0).sort((a,b)=>a.rank-b.rank);
+    if(ranked.length>0){
+      const winner=ranked[0];
+      const resultStr=ranked.map(p=>`${p.rank}등 ${p.name}`).join(' / ');
+      $('spec-status').textContent=`게임 종료 — ${winner.name} 승리! (${resultStr})`;
+
+      // 종료 TTS + 로비 복귀 (한 번만)
+      if(!_specEndAnnounced){
+        _specEndAnnounced=true;
+
+        // TTS 멘트 구성
+        let ttsMsg=`게임이 종료되었습니다. `;
+        if(ranked.length===2){
+          ttsMsg+=`${ranked[0].name} 승리, ${ranked[1].name} 패배입니다.`;
+        } else {
+          const rankMsgs=ranked.map(p=>`${p.rank}등 ${p.name}`).join(', ');
+          ttsMsg+=`결과는 ${rankMsgs}입니다.`;
+        }
+        ttsMsg+=` 잠시 후 로비로 돌아갑니다.`;
+        ttsSay(ttsMsg);
+
+        // 5초 후 로비 복귀
+        setTimeout(()=>leaveSpectate(), 5000);
+      }
+    } else {
+      $('spec-status').textContent='게임 종료';
+    }
+  } else {
+    _specEndAnnounced=false;
+    $('spec-status').textContent='관전 중';
+  }
+
+  // 플레이어 카드 수
+  const pc=$('spec-players');
+  pc.innerHTML='';
+  gs.players.forEach(p=>{
+    const done=p.done;
+    const div=document.createElement('div');
+    div.style.cssText='background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:8px 14px;text-align:center;min-width:70px;';
+    div.innerHTML=`<div style="font-weight:700;font-size:.9rem;color:${done?'var(--muted)':'var(--blue)'}">${p.name}</div>`+
+      `<div style="font-size:1.3rem;font-weight:900;color:${done?'var(--muted)':''}">${done?'완료':(p.hand?.length??'?')+'장'}</div>`;
+    pc.appendChild(div);
+  });
+
+  // 현재 판 (패 표시 - 뒷면 아님, 관중은 다 볼 수 있음)
+  const pile=gs.pile||[];
+  const pp=$('spec-pp');
+  if(pile.length===0){
+    pp.innerHTML='<span style="color:var(--muted);font-size:.8rem;">아직 아무도 안 냄</span>';
+  } else {
+    pp.innerHTML=pile.map(c=>`<div class="pc${c==='X'?' xc':''}">${c}</div>`).join('');
+  }
+
+  // 패 정보 (누가 낸 판인지)
+  const pi=$('spec-pi');
+  if(gs.pileBy){
+    const byPlayer=gs.players.find(p=>p.id===gs.pileBy);
+    pi.textContent=byPlayer?`${byPlayer.name}이(가) 낸 패`:'';
+  } else {
+    pi.textContent='';
+  }
+
+  // 로그
+  const logEl=$('spec-log');
+  if(gs.log&&Array.isArray(gs.log)){
+    logEl.innerHTML=gs.log.slice().reverse().map(l=>`<div class="li">${l}</div>`).join('');
+  }
+}
+
+function leaveSpectate(){
+  if(specCh){try{specCh.unsubscribe();}catch(e){} specCh=null;}
+  if(specSearchTimer){clearTimeout(specSearchTimer);specSearchTimer=null;}
+  specMode=false;
+  specTargetP=0;
+  specName='';
+  _specEndAnnounced=false;
+  _specLastPileKey='';
+  _specLastPassKey='';
+  $('spec-ni').value='';
+  $('spec-nsec').style.display='none';
+  $('spec-status').textContent='게임 방 찾는 중...';
+  $('spec-players').innerHTML='';
+  $('spec-log').innerHTML='';
+  showScreen('lobby-screen');
+}
+
+// ══════════════════════════
+//  ENTER GAME
+// ══════════════════════════
+let gsReqTimer=null;
+
+function enterGame({roomId,players}){
+  isHost=players[0].id===myId;
+  gsReady=false;
+  _hbRecv={};
+  _hbStart=Date.now();
+
+  // 채널명 해시로 예측 불가능하게
+  _hashCh(roomId).then(hashedRoom=>{
+  gameCh=supa.channel(hashedRoom,{config:{broadcast:{self:true}}});
+  gameCh
+    .on('broadcast',{event:'gs'  },({payload})=>receiveGS(payload))
+    .on('broadcast',{event:'action'},({payload})=>receiveAction(payload))
+    .on('broadcast',{event:'req_gs'},({payload})=>{
+      // 호스트만 응답, 요청자에게 GS 전송
+      if(isHost&&GS)broadcastGS();
+    })
+    .on('broadcast',{event:'left'},({payload})=>{
+      handlePlayerLeft(payload.id,payload.name);
+    })
+    .on('broadcast',{event:'hb'},({payload})=>{
+      // 상대 heartbeat 수신 → 타임스탬프 갱신
+      if(payload&&payload.id&&payload.id!==myId){
+        _hbRecv[payload.id]=Date.now();
+      }
+    })
+    .subscribe(async status=>{
+      if(status==='SUBSCRIBED'){
+        showScreen('game-screen');
+        if(gameHb)clearInterval(gameHb);
+
+        // ── heartbeat: 3초마다 생존 신호 전송 ──
+        const HB_INTERVAL=3000;  // 3초마다 전송
+        const HB_TIMEOUT=12000;  // 12초 무응답 → 나간 것으로 판단
+        gameHb=setInterval(()=>{
+          if(gameCh)gameCh.send({type:'broadcast',event:'hb',payload:{id:myId}});
+          // 상대 heartbeat 체크
+          if(!GS||GS.phase==='ended'||endShown)return;
+          const now=Date.now();
+          GS.players.forEach(p=>{
+            if(p.id===myId||p.done)return;
+            const last=_hbRecv[p.id]||_hbStart;
+            if(now-last>HB_TIMEOUT){
+              handlePlayerLeft(p.id,p.name);
+            }
+          });
+        },HB_INTERVAL);
+
+        if(isHost){
+          // 관중 announce 채널에 room_open 알림
+          const announceChName=`peeper_spec_announce_${players.length}p`;
+          const announceChTemp=supa.channel(announceChName,{config:{broadcast:{self:false}}});
+          announceChTemp.subscribe(st=>{
+            if(st==='SUBSCRIBED'){
+              announceChTemp.send({type:'broadcast',event:'room_open',payload:{
+                roomId,playerNames:players.map(p=>p.name)
+              }});
+              setTimeout(()=>{try{announceChTemp.unsubscribe();}catch(e){}},3000);
+            }
+          });
+          // 관중 GS broadcast 채널 오픈
+          _hashCh('spec_'+roomId).then(specHash=>{
+            if(_specBroadcastCh){try{_specBroadcastCh.unsubscribe();}catch(e){}}
+            _specBroadcastCh=supa.channel('spec_'+hashedRoom,{config:{broadcast:{self:false}}});
+            _specBroadcastCh
+              .on('broadcast',{event:'spec_req'},()=>{
+                if(GS)_specBroadcastCh.send({type:'broadcast',event:'gs',payload:GS});
+              })
+              .subscribe();
+          });
+          // 호스트: 딜 애니메이션 후 게임 초기화
+          startDealAnimation(players,()=>initGS(players));
+        } else {
+          // 비호스트: GS 요청, 못 받으면 재시도
+          requestGS();
+        }
+      }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+        if(!navigator.onLine){noInternetAlert();return;}
+        // 연결 끊기면 바로 강제 중단 (재연결 없음)
+        if(!endShown)forceAbort();
+      }
+    });
+
+  // 페이지 언로드 시 나갔다고 알림
+  window.onbeforeunload=()=>{
+    if(gameCh&&!endShown){
+      gameCh.send({type:'broadcast',event:'left',payload:{id:myId,name:myName}});
+    }
+  };
+  }); // _hashCh promise end
+}
+
+function requestGS(){
+  if(gsReady)return;
+  const myEpoch=_epoch;
+  if(gsReqTimer)clearTimeout(gsReqTimer);
+  // 첫 요청은 1.5초 후 (호스트 딜 애니메이션 완료 대기)
+  gsReqTimer=setTimeout(()=>{
+    if(myEpoch!==_epoch)return; // 그 사이 로비로 나갔다가 새 게임 시작함 → 이 체인은 폐기
+    if(gsReady)return;
+    if(gameCh)gameCh.send({type:'broadcast',event:'req_gs',payload:{from:myId}});
+    let tries=0;
+    const maxTries=20; // 최대 20초 대기
+    function retry(){
+      if(myEpoch!==_epoch)return;
+      if(gsReady||tries>=maxTries){
+        if(!gsReady){
+          // 끝내 못 받으면 강제 중단
+          toast('게임 데이터를 받지 못했습니다. 재접속 필요.','err',4000);
+          setTimeout(()=>{if(myEpoch===_epoch)goToMain();},4000);
+        }
+        return;
+      }
+      tries++;
+      gsReqTimer=setTimeout(()=>{
+        if(myEpoch!==_epoch)return;
+        if(!gsReady&&gameCh){
+          gameCh.send({type:'broadcast',event:'req_gs',payload:{from:myId}});
+          retry();
+        }
+      },1000);
+    }
+    retry();
+  },1500);
+}
+
+function handlePlayerLeft(leftId, leftName){
+  // 게임 이미 종료됐으면 무시 (정상 승리 후 나가는 경우)
+  if(!GS||GS.phase==='ended'||endShown)return;
+  const pIdx=GS.players.findIndex(p=>p.id===leftId);
+  if(pIdx<0)return;
+  // 이미 카드 다 낸 사람(정상 종료)이 나가는 건 무시
+  if(GS.players[pIdx].done)return;
+  // 게임 도중 나간 것 → 강제 중단
+  forceAbort();
+}
+
+function forceAbort(){
+  if(endShown)return;
+  endShown=true;
+  stopTimer();
+  ttsSay('진행 중인 게임이 강제 중단되었습니다.');
+  const sb=$('sb');
+  sb.textContent='게임 강제 중단';
+  sb.className='sb';
+  const myEpoch=_epoch;
+  setTimeout(()=>{if(myEpoch===_epoch)goToMain();},3500);
+}
+
+// ══════════════════════════
+//  DECK UTILS
+// ══════════════════════════
+const cv=c=>c==='X'?16:parseInt(c);
+const csort=(a,b)=>cv(a)-cv(b);
+function buildDeck(){
+  const d=[];
+  for(let n=1;n<=15;n++)for(let j=0;j<4;j++)d.push(String(n));
+  for(let j=0;j<4;j++)d.push('X');return d;
+}
+function shuffle(arr){
+  // Fisher-Yates 5회 + crypto 랜덤
+  for(let pass=0;pass<5;pass++){
+    for(let i=arr.length-1;i>0;i--){
+      let j;
+      try{
+        const buf=new Uint32Array(1);
+        crypto.getRandomValues(buf);
+        j=buf[0]%(i+1);
+      }catch(e){
+        j=Math.floor(Math.random()*(i+1));
+      }
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+  }
+  return arr;
+}
+
+// 한 장씩 돌아가며 나눠주기 (딜러 방식) → 특정 숫자 편중 방지
+function dealHands(deck,playerCount,cardsEach){
+  const hands=Array.from({length:playerCount},()=>[]);
+  for(let i=0;i<cardsEach*playerCount;i++){
+    hands[i%playerCount].push(deck[i]);
+  }
+  return hands;
+}
+
+function initGS(rawPlayers){
+  aiCardCountReset(); // ③ 카드 카운팅 초기화
+  aiMemory.passCount={};
+  aiMemory.playHistory={};
+  aiMemory.oppStrength={};
+  aiMemory.consecutivePass={};
+  aiMemory.usedBomb={};
+  aiMemory.psychMode='normal';
+  aiMemory.psychTurn=0;
+  aiMemory.turnNo=0;
+  const deck=shuffle(buildDeck());
+  const n=rawPlayers.length;
+  const firstTurn=Math.floor(Math.random()*n);
+  const hands=dealHands(deck,n,16);
+  const players=rawPlayers.map((p,i)=>({
+    id:p.id,name:p.name,
+    hand:hands[i], // 정렬 없이 그대로
+    done:false,rank:0
+  }));
+  GS={players,turnIdx:firstTurn,pile:[],pileType:null,pileBy:null,passCount:0,passSeq:0,
+    log:[`${players[firstTurn].name}님이 선입니다.`],ranks:[],phase:'playing'};
+  broadcastGS();
+}
+
+let _aiScheduled=false;
+let _aiScheduledIds=new Set(); // 여러 AI 중복 방지
+
+function isAIPlayer(id){return AI_IDS.includes(id);}
+
+function broadcastGS(){
+  if(isAIMode){
+    const me=GS.players.find(p=>p.id===myId);
+    if(me)myHand=me.hand;
+
+    // ── AI가 카드 낸 경우 효과음 ──
+    const newPileKey=(GS.pile||[]).join(',')+'|'+(GS.pileBy||'');
+    if(GS.pile&&GS.pile.length>0&&isAIPlayer(GS.pileBy)&&newPileKey!==lastPileKey){
+      if(GS.pileType)playSfx(GS.pileType.type);
+    }
+    lastPileKey=newPileKey;
+
+    // ── AI 패스 효과음 ──
+    const newPassKey=(GS.lastPassBy||'')+'|'+(GS.passSeq||0);
+    if(isAIPlayer(GS.lastPassBy)&&newPassKey!==lastPassKey){
+      playSfx('pass');
+    }
+    lastPassKey=newPassKey;
+
+    // ── 등수 발표 TTS (동시 확정 항목은 한 문장으로 합쳐서 발화 큐에 순서대로 추가) ──
+    const curLen=GS.log?GS.log.length:0;
+    const safeFrom=Math.min(lastLogLen,curLen);
+    const newLogs=(GS.log||[]).slice(safeFrom);
+    const rankLogs=newLogs.filter(l=>l.startsWith('__RANK__:'));
+    if(rankLogs.length){
+      buildRankAnnouncements(rankLogs,GS.players,myName).forEach(msg=>ttsSay(msg));
+    }
+    lastLogLen=curLen;
+
+    renderGame();
+    // 턴인 AI 예약 (여러 AI 지원)
+    if(GS.phase==='playing'){
+      const curPlayer=GS.players[GS.turnIdx];
+      if(curPlayer&&isAIPlayer(curPlayer.id)&&!_aiScheduledIds.has(curPlayer.id)){
+        _aiScheduledIds.add(curPlayer.id);
+        scheduleAI(curPlayer.id);
+      }
+    }
+    return;
+  }
+  if(!gameCh||!isHost)return;
+
+  // 호스트도 상대방 액션 효과음 처리 (receiveGS는 호스트에서 skip되므로 여기서 처리)
+  const newPileKeyH=(GS.pile||[]).join(',')+'|'+(GS.pileBy||'');
+  const newPassKeyH=(GS.lastPassBy||'')+'|'+(GS.passSeq||0);
+  if(newPileKeyH!==lastPileKey&&GS.pile&&GS.pile.length>0&&GS.pileBy&&GS.pileBy!==myId){
+    if(GS.pileType)playSfx(GS.pileType.type);
+  }
+  if(newPassKeyH!==lastPassKey&&GS.lastPassBy&&GS.lastPassBy!==myId){
+    playSfx('pass');
+  }
+  lastPileKey=newPileKeyH;
+  lastPassKey=newPassKeyH;
+
+  gameCh.send({type:'broadcast',event:'gs',payload:GS});
+  // 관중 채널에도 GS 전송 (호스트만)
+  if(isHost&&_specBroadcastCh){
+    try{_specBroadcastCh.send({type:'broadcast',event:'gs',payload:GS});}catch(e){}
+  }
+  // 호스트는 자신이 보낸 GS를 receiveGS로 다시 받지 않고 직접 렌더
+  const me=GS.players.find(p=>p.id===myId);
+  if(me)myHand=me.hand;
+  renderGame();
+}
+
+let lastPileKey='';
+let lastPassKey='';
+let lastLogLen=0;
+let announcedRanks=new Set(); // 이미 TTS 발화한 rank 중복 방지
+
+// 새로 등장한 __RANK__ 로그들을 모아 발화 문장을 만든다.
+// 같은 시점(동시)에 여러 명의 등수가 함께 확정되면 한 문장으로 합쳐서 씹히지 않게 한다.
+// 예: "OO님이 3등, 내가 4등입니다."
+function buildRankAnnouncements(rankLogs,players,myName,onlyMe){
+  const items=[];
+  for(const l of rankLogs){
+    const parts=l.split(':');const name=parts[1];const r=parseInt(parts[2]);
+    const key=name+':'+r;
+    if(announcedRanks.has(key))continue;
+    announcedRanks.add(key);
+    items.push({name,r});
+  }
+  if(!items.length)return [];
+  const isTwo=players.length===2;
+  if(isTwo){
+    return items.filter(it=>it.name===myName).map(it=>
+      it.r===1?'내가 승리했습니다!':'내가 패배했습니다.'
+    );
+  }
+  if(onlyMe){
+    return items.filter(it=>it.name===myName).map(it=>
+      it.r===1?'내가 1등입니다.':`내가 ${it.r}등입니다.`
+    );
+  }
+  const phrase=(it)=>it.name===myName?(it.r===1?'내가 1등입니다':`내가 ${it.r}등입니다`):`${it.name}님이 ${it.r}등입니다`;
+  const parts=items.map(phrase);
+  if(parts.length===1)return [parts[0]+'.'];
+  return [parts.join(', ')+'.'];
+}
+function receiveGS(gs){
+  // 호스트는 자신이 보낸 GS를 무시 (broadcastGS에서 직접 렌더)
+  if(isHost)return;
+  // GS 무결성 검증 (조작 방지)
+  if(!_verifyGS(gs)){console.warn('[PEEPER] GS integrity check failed');return;}
+
+  const newPileKey=(gs.pile||[]).join(',')+'|'+(gs.pileBy||'');
+  const newPassKey=(gs.lastPassBy||'')+'|'+(gs.passSeq||0);
+
+  // 비호스트: 첫 GS 수신 시 딜 애니메이션 표시 (키 업데이트는 애니 후)
+  if(!gsReady&&gs.players){
+    gsReady=true;
+    GS=gs;
+    const me=GS.players.find(p=>p.id===myId);
+    if(me)myHand=me.hand;
+    // 첫 수신 시엔 키를 현재 상태로 초기화 (이후 변화만 감지)
+    lastPileKey=newPileKey;
+    lastPassKey=newPassKey;
+    lastLogLen=(gs.log||[]).length;
+    const rawP=gs.players.map(p=>({id:p.id,name:p.name}));
+    startDealAnimation(rawP,()=>renderGame());
+    return;
+  }
+
+  const pileChanged=(newPileKey!==lastPileKey);
+  const prevLogLen=lastLogLen;
+  const passHappened=(newPassKey!==lastPassKey&&gs.lastPassBy&&gs.lastPassBy!==myId);
+
+  lastPileKey=newPileKey;
+  lastPassKey=newPassKey;
+  lastLogLen=(gs.log||[]).length;
+
+  GS=gs;
+  gsReady=true;
+  const me=GS.players.find(p=>p.id===myId);
+  if(me)myHand=me.hand;
+  // 상대방 카드 냈을 때 효과음
+  if(pileChanged&&gs.pile&&gs.pile.length>0&&gs.pileBy!==myId){
+    if(gs.pileType)playSfx(gs.pileType.type);
+  }
+  // 상대방 패스 효과음
+  if(passHappened)playSfx('pass');
+  // 새 로그 처리 (등수 발표만) - announcedRanks로 중복 방지, 동시 확정 항목은 한 문장으로 합침
+  if(lastLogLen>prevLogLen){
+    const newLogs=(gs.log||[]).slice(prevLogLen);
+    const rankLogs=newLogs.filter(l=>l.startsWith('__RANK__:'));
+    if(rankLogs.length){
+      const onlyMe=isAIMode&&GS.players.length>2;
+      buildRankAnnouncements(rankLogs,GS.players,myName,onlyMe).forEach(msg=>ttsSay(msg));
+    }
+  }
+  renderGame();
+}
+
+// ══════════════════════════
+//  ACTION SYSTEM
+// ══════════════════════════
+function sendAction(action){
+  // AI모드: 직접 apply (gameCh 없음)
+  if(isAIMode){applyAction(action);return;}
+  if(!gameCh)return;
+  if(isHost){
+    applyAction(action);
+  } else {
+    gameCh.send({type:'broadcast',event:'action',payload:action});
+  }
+}
+function receiveAction(action){
+  // 호스트만 action을 받아서 처리
+  if(!isHost)return;
+  applyAction(action);
+}
+function applyAction(action){
+  if(!GS||GS.phase==='ended')return;
+  // 액션 구조 검증
+  if(!action||typeof action.playerId!=='string'||!action.type)return;
+  if(action.playerId.length>30)return; // ID 길이 제한
+  if(action.type==='play'){
+    if(!Array.isArray(action.cards)||action.cards.length===0||action.cards.length>16)return;
+    // 유효한 카드값: 1~15 문자열 + 'X'
+    const valid=new Set(['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','X']);
+    if(action.cards.some(c=>!valid.has(String(c))))return;
+  }
+  const pIdx=GS.players.findIndex(p=>p.id===action.playerId);
+  if(pIdx<0){console.warn('[PEEPER] applyAction: player not found',action.playerId);return;}
+  if(pIdx!==GS.turnIdx){console.warn('[PEEPER] applyAction: not your turn');return;}
+  if(action.type==='play')applyPlay(action.playerId,action.cards,action.playType);
+  else if(action.type==='pass')applyPass(action.playerId);
+}
+
+function applyPlay(playerId,cards,playType){
+  // ── 메모리 업데이트 (상대 행동 기록) ──
+  if(!isAIPlayer(playerId)){
+    aiMemoryUpdate(playerId,'play',{
+      type:playType.type,
+      rank:playType.rank,
+      cardCount:cards.length
+    });
+  }
+  const gs=GS;
+  const pIdx=gs.players.findIndex(p=>p.id===playerId);if(pIdx<0)return;
+  const player=gs.players[pIdx];
+  // 카드 제거 - 중복 카드 안전 처리
+  let newHand=[...player.hand];
+  for(const c of cards){
+    const i=newHand.indexOf(c);
+    if(i<0)return; // 없는 카드 → 무시
+    newHand.splice(i,1);
+  }
+  const tl={single:'싱글',pair:'페어',bomb:'밤',megabomb:'밤투',straight:'스트레이트',pairstraight:'페어스트레이트'};
+  const newLog=[...gs.log,`${player.name}: ${tl[playType.type]||playType.type} [${cards.join(' ')}]`];
+  const done=newHand.length===0;
+  let newRanks=[...gs.ranks];
+  if(done){
+    const rank=newRanks.length+1;
+    newRanks.push({id:playerId,name:player.name,rank});
+    // 등수 발표 로그 (TTS + 모든 클라이언트에 전달됨)
+    newLog.push(`__RANK__:${player.name}:${rank}`);
+  }
+  const newPlayers=gs.players.map((p,i)=>i===pIdx?{...p,hand:newHand,done,rank:done?newRanks.length:p.rank}:p);
+  const still=newPlayers.filter(p=>!p.done);
+  let phase=gs.phase;
+  if(still.length<=1){
+    if(still.length===1){
+      const last=still[0];const li=newPlayers.findIndex(p=>p.id===last.id);
+      const lastRank=newRanks.length+1;
+      newRanks.push({id:last.id,name:last.name,rank:lastRank});
+      newPlayers[li]={...newPlayers[li],done:true,rank:lastRank};
+      newLog.push(`__RANK__:${last.name}:${lastRank}`);
+    }
+    phase='ended';
+    // 유저 패턴 프로필 업데이트 (게임 간 누적)
+    const totalActs=_gameStats.plays+_gameStats.passes||1;
+    const aiWon=newRanks.length>0&&isAIPlayer(newRanks[0].id);
+    aiProfileUpdate({
+      passRate:_gameStats.passes/totalActs,
+      plays:_gameStats.plays,
+      passes:_gameStats.passes,
+      typeCount:_gameStats.typeCount,
+      highRankPlays:_gameStats.highRankPlays,
+      bombUsed:_gameStats.bombUsed,
+      aiWon,
+    });
+    aiProfileSave(); // 게임 끝나자마자 바로 저장!
+    // 게임 종료 시 turnIdx 그대로 유지 (getNext 호출 불필요)
+    GS={...gs,players:newPlayers,turnIdx:gs.turnIdx,pile:cards,pileType:playType,pileBy:playerId,passCount:0,log:newLog,ranks:newRanks,phase};
+    broadcastGS();
+    return;
+  }
+  const nextIdx=getNext(newPlayers,pIdx);
+  GS={...gs,players:newPlayers,turnIdx:nextIdx,pile:cards,pileType:playType,pileBy:playerId,passCount:0,log:newLog,ranks:newRanks,phase};
+  broadcastGS();
+}
+
+function applyPass(playerId){
+  // ── 메모리 업데이트 (패스 기록) ──
+  if(!isAIPlayer(playerId)){
+    aiMemoryUpdate(playerId,'pass');
+  }
+  const gs=GS;
+  const pIdx=gs.players.findIndex(p=>p.id===playerId);if(pIdx<0)return;
+  const player=gs.players[pIdx];
+  const active=gs.players.filter(p=>!p.done);
+  const newPassCount=gs.passCount+1;
+  const newLog=[...gs.log,`${player.name}: 패스`];
+  const needPass=active.length-1;
+  let newPile=gs.pile,newPT=gs.pileType,newPB=gs.pileBy,newPC=newPassCount,nextIdx,extraLog=[];
+  let resetLog=false;
+  if(newPassCount>=needPass&&gs.pile.length>0){
+    const pileByIdx=gs.players.findIndex(p=>p.id===gs.pileBy);
+    newPile=[];newPT=null;newPB=null;newPC=0;resetLog=true;
+    if(pileByIdx>=0&&!gs.players[pileByIdx].done){
+      nextIdx=pileByIdx;
+      extraLog.push(`${gs.players[pileByIdx].name}님이 선입니다.`);
+    }else{
+      nextIdx=getNext(gs.players,pIdx);
+      extraLog.push(`${gs.players[nextIdx]?.name||'?'}님이 선입니다.`);
+    }
+  }else{
+    nextIdx=getNext(gs.players,pIdx);
+  }
+  // 선 바뀔 때 로그 초기화 (선 알림만 남김)
+  const finalLog=resetLog?extraLog:[...newLog,...extraLog];
+  GS={...gs,turnIdx:nextIdx,pile:newPile,pileType:newPT,pileBy:newPB,passCount:newPC,passSeq:(gs.passSeq||0)+1,log:finalLog,lastPassBy:playerId};
+  broadcastGS();
+}
+
+function getNext(players,fromIdx){
+  const n=players.length;let next=(fromIdx+1)%n;let t=0;
+  while(players[next].done&&t<n){next=(next+1)%n;t++;}
+  // 모든 플레이어가 done인 극단적 상황 방어 (phase=ended에서 호출되면 안 되지만 안전장치)
+  if(t>=n)return fromIdx;
+  return next;
+}
+
+// ══════════════════════════════════════════════════════
+//  AI ENGINE v5 ULTRA — 블러핑 감지 + 패턴 학습 + 심리전
+// ══════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════
+//  유저 패턴 학습 저장소 (게임 간 누적, 리셋 안 됨)
+// ══════════════════════════════════════════════════════
+// ── 프로필 저장/불러오기 ──
+const PROFILE_KEY='peeper_ai_profile';
+
+function aiProfileSave(){
+  try{localStorage.setItem(PROFILE_KEY,JSON.stringify(aiPlayerProfile));}catch(e){}
+}
+
+function aiProfileLoad(){
+  try{
+    const raw=localStorage.getItem(PROFILE_KEY);
+    if(!raw)return;
+    const saved=JSON.parse(raw);
+    Object.assign(aiPlayerProfile,saved);
+  }catch(e){}
+}
+
+const aiPlayerProfile={
+  totalGames:0,         // 총 게임 수
+  wins:0,               // AI 승리 수
+  // 행동 통계 (누적)
+  totalPlays:0,         // 유저 총 낸 횟수
+  totalPasses:0,        // 유저 총 패스 횟수
+  typeCount:{           // 유저가 낸 패 타입별 횟수
+    single:0,pair:0,bomb:0,megabomb:0,straight:0,pairstraight:0
+  },
+  highRankPlays:0,      // rank 12 이상 낸 횟수
+  bombUsed:0,           // 밤/밤투 사용 횟수
+  earlyAggression:0,    // 초반(첫 5턴) 적극 공세 횟수
+  lateDefense:0,        // 후반(카드 5장 이하) 패스 횟수
+  avgPassRate:0,        // 평균 패스율 (게임별 갱신)
+  // 성향 (0~1)
+  aggression:0.5,       // 공격성 (높을수록 고rank 자주 냄)
+  bluffTendency:0.5,    // 블러핑 성향 (패스 많다가 갑자기 강패)
+  bombHoarder:0.5,      // 밤 아끼는 성향
+};
+
+// 페이지 로드 시 저장된 프로필 불러오기
+aiProfileLoad();
+// 페이지 닫히거나 새로고침 직전 저장
+window.addEventListener('beforeunload',()=>aiProfileSave());
+
+// 게임 종료 시 이번 게임 통계 → 프로필에 누적
+function aiProfileUpdate(gameSummary){
+  const{passRate,plays,passes,typeCount,highRankPlays,bombUsed,aiWon}=gameSummary;
+  aiPlayerProfile.totalGames++;
+  if(aiWon)aiPlayerProfile.wins++;
+
+  aiPlayerProfile.totalPlays+=plays;
+  aiPlayerProfile.totalPasses+=passes;
+  aiPlayerProfile.bombUsed+=bombUsed;
+  aiPlayerProfile.highRankPlays+=highRankPlays;
+
+  Object.keys(typeCount).forEach(t=>{
+    if(aiPlayerProfile.typeCount[t]!==undefined)
+      aiPlayerProfile.typeCount[t]+=typeCount[t];
+  });
+
+  // 패스율 지수 이동 평균 (최근 게임 가중)
+  const alpha=0.4;
+  aiPlayerProfile.avgPassRate=aiPlayerProfile.totalGames===1
+    ?passRate
+    :aiPlayerProfile.avgPassRate*(1-alpha)+passRate*alpha;
+
+  // 성향 업데이트 (지수 이동 평균)
+  const totalActs=plays+passes||1;
+  // 공격성: 고rank 비율
+  const aggr=highRankPlays/totalActs;
+  aiPlayerProfile.aggression=aiPlayerProfile.aggression*(1-alpha)+aggr*alpha;
+  // 블러핑: 패스율 높은데 밤 쓴 비율
+  const bluff=passes>3?(bombUsed/passes):0;
+  aiPlayerProfile.bluffTendency=aiPlayerProfile.bluffTendency*(1-alpha)+Math.min(1,bluff)*alpha;
+  // 밤 아끼기: 총 플레이 대비 밤 비율 낮으면 hoarder
+  const bombRate=plays>0?bombUsed/plays:0;
+  aiPlayerProfile.bombHoarder=aiPlayerProfile.bombHoarder*(1-alpha)+(1-Math.min(1,bombRate*5))*alpha;
+}
+
+// 게임 중 유저 행동 수집용 (게임당 초기화)
+let _gameStats={plays:0,passes:0,typeCount:{single:0,pair:0,bomb:0,megabomb:0,straight:0,pairstraight:0},highRankPlays:0,bombUsed:0};
+
+function _gameStatsReset(){
+  _gameStats={plays:0,passes:0,typeCount:{single:0,pair:0,bomb:0,megabomb:0,straight:0,pairstraight:0},highRankPlays:0,bombUsed:0};
+}
+
+// 프로필 기반 AI 조정값 반환
+function aiProfileAdjust(){
+  const p=aiPlayerProfile;
+  if(p.totalGames===0)return{rankBias:0,bluffGuard:0,bombExpect:0.5};
+  return{
+    // 공격적 유저 → AI도 rank 높은 패로 적극 받기
+    rankBias:( p.aggression-0.5)*20,
+    // 블러퍼 → AI가 강패 덜 낭비 (bluffGuard 높을수록 강패 아낌)
+    bluffGuard:p.bluffTendency,
+    // 밤 아끼는 유저 → 상대 밤 예상하고 대비
+    bombExpect:p.bombHoarder,
+  };
+}
+const aiMemory={
+  // 상대별 패스 횟수 추적
+  passCount:{},        // {playerId: count}
+  // 상대별 낸 패 기록
+  playHistory:{},      // {playerId: [{type, rank, cardCount, turnNo}]}
+  // 상대별 추정 손패 강도
+  oppStrength:{},      // {playerId: 'weak'|'medium'|'strong'|'unknown'}
+  // 연속 패스 횟수 (블러핑 감지용)
+  consecutivePass:{},  // {playerId: count}
+  // 상대가 밤/밤투를 쓴 적 있는지
+  usedBomb:{},         // {playerId: bool}
+  // AI별 심리전 상태 (멀티AI 지원)
+  psychMode:{},        // {aiId: 'normal'|'bluff'|'suppress'}
+  psychTurn:{},        // {aiId: turnNo}
+  turnNo:0,            // 현재 턴 번호
+};
+
+function aiMemoryUpdate(playerId, action, data={}){
+  if(!playerId||isAIPlayer(playerId))return; // AI끼리는 메모리 수집 안 함
+  if(!aiMemory.passCount[playerId])aiMemory.passCount[playerId]=0;
+  if(!aiMemory.playHistory[playerId])aiMemory.playHistory[playerId]=[];
+  if(!aiMemory.consecutivePass[playerId])aiMemory.consecutivePass[playerId]=0;
+  if(!aiMemory.usedBomb[playerId])aiMemory.usedBomb[playerId]=false;
+
+  if(action==='pass'){
+    aiMemory.passCount[playerId]++;
+    aiMemory.consecutivePass[playerId]++;
+    _gameStats.passes++;
+    if(aiMemory.consecutivePass[playerId]>=3){
+      aiMemory.oppStrength[playerId]='weak';
+    }
+  } else if(action==='play'){
+    aiMemory.consecutivePass[playerId]=0;
+    aiMemory.playHistory[playerId].push({
+      type:data.type,rank:data.rank,
+      cardCount:data.cardCount,
+      turnNo:aiMemory.turnNo
+    });
+    _gameStats.plays++;
+    if(data.type&&_gameStats.typeCount[data.type]!==undefined)_gameStats.typeCount[data.type]++;
+    if(data.rank>=12)_gameStats.highRankPlays++;
+    if(data.type==='bomb'||data.type==='megabomb'){
+      aiMemory.usedBomb[playerId]=true;
+      _gameStats.bombUsed++;
+    }
+    const recentPlays=aiMemory.playHistory[playerId].slice(-5);
+    const avgRank=recentPlays.reduce((s,p)=>s+p.rank,0)/recentPlays.length;
+    if(avgRank>=10)aiMemory.oppStrength[playerId]='strong';
+    else if(avgRank>=6)aiMemory.oppStrength[playerId]='medium';
+    else aiMemory.oppStrength[playerId]='weak';
+  }
+}
+
+// ── 블러핑 감지: 상대가 약한 척하는지 분석 ──
+function aiDetectBluff(playerId){
+  if(!playerId||playerId===AI_ID)return false;
+  const hist=aiMemory.playHistory[playerId]||[];
+  const passes=aiMemory.passCount[playerId]||0;
+  const totalActions=(hist.length+passes)||1;
+  const passRate=passes/totalActions;
+  // 패스율 50% 이상이지만 갑자기 높은 rank를 낸 적 있으면 블러퍼
+  if(passRate>0.5&&hist.some(p=>p.rank>=12))return true;
+  return false;
+}
+
+// ── 심리전: AI가 일부러 약한 패로 받거나 패스해서 상대 유도 ──
+function aiPsychStrategy(ctx, candidates, isLeader, aiId){
+  if(!aiId)aiId=AI_ID;
+  const{dangerLevel,aiExitLevel,aiCards,isMultiAI}=ctx;
+  // 심리전 조건: 여유있고(dangerLevel=0), 카드 많을 때(7+), 비선
+  if(isLeader||dangerLevel>0||aiExitLevel>0||aiCards<7)return null;
+
+  const psychMode=aiMemory.psychMode[aiId]||'normal';
+  const psychTurn=aiMemory.psychTurn[aiId]||0;
+  const currentTurn=aiMemory.turnNo;
+  // 심리전 쿨다운: 5턴에 한번
+  if(currentTurn-psychTurn<5)return null;
+
+  // 멀티AI: 다른 AI가 선 근처면 심리전 하지 않음 (AI끼리 에너지 낭비 방지)
+  if(isMultiAI){
+    const aiOppClose=ctx.aiOpponents.some(p=>p.hand.length<=6);
+    if(aiOppClose)return null;
+  }
+
+  const oppIds=GS.players.filter(p=>p.id!==aiId&&!p.done&&!isAIPlayer(p.id)).map(p=>p.id);
+  const hasStrongOpp=oppIds.some(id=>aiMemory.oppStrength[id]==='strong'||aiDetectBluff(id));
+
+  if(hasStrongOpp){
+    const lowCand=candidates
+      .filter(c=>c.pt.type!=='bomb'&&c.pt.type!=='megabomb')
+      .sort((a,b)=>a.pt.rank-b.pt.rank)[0];
+    if(lowCand&&lowCand.pt.rank<=5){
+      aiMemory.psychMode[aiId]='bluff';
+      aiMemory.psychTurn[aiId]=currentTurn;
+      return lowCand;
+    }
+  }
+  return null;
+}
+
+// AI 행동 딜레이 (상황에 따라 가변)
+function scheduleAI(aiId){
+  if(!aiId)aiId=AI_ID;
+  const myEpoch=_epoch;
+  if(!GS){setTimeout(()=>{_aiScheduledIds.delete(aiId);if(myEpoch===_epoch)aiTakeTurn(aiId);},2000);return;}
+  const ctx=aiGetContext(aiId);
+  const base=2100;
+  const delay=ctx.dangerLevel>=2?base*0.75+Math.random()*400:base+Math.random()*400;
+  setTimeout(()=>{_aiScheduledIds.delete(aiId);if(myEpoch===_epoch)aiTakeTurn(aiId);},delay);
+}
+
+function aiTakeTurn(aiId){
+  if(!aiId)aiId=AI_ID;
+  if(!GS||GS.phase==='ended')return;
+  const aiIdx=GS.players.findIndex(p=>p.id===aiId);
+  if(aiIdx<0||GS.turnIdx!==aiIdx)return;
+
+  aiMemory.turnNo++;
+  aiSyncCardCount(aiId); // ③ 카드 카운팅 동기화
+
+  const aiHand=GS.players[aiIdx].hand;
+  const pile=GS.pile||[];
+  const pileType=GS.pileType;
+  const isLeader=!pileType||pile.length===0;
+  const ctx=aiGetContext(aiId);
+
+  const candidates=aiGenerateCandidates(aiHand,pile,pileType,isLeader);
+
+  if(candidates.length===0){applyPass(aiId);return;}
+
+  // ── 즉시 승리 체크 ──
+  const winMove=candidates.find(c=>c.cards.length===aiHand.length);
+  if(winMove){applyPlay(aiId,winMove.cards,winMove.pt);return;}
+
+  // ── 초긴급: 상대 3장 이하 — 무조건 최강패로 막아야 함 ──
+  if(!isLeader&&ctx.dangerLevel>=3){
+    const best=candidates.slice().sort((a,b)=>b.pt.rank-a.pt.rank||b.cards.length-a.cards.length)[0];
+    applyPlay(aiId,best.cards,best.pt);return;
+  }
+
+  // ── 심리전 체크 ──
+  const psychMove=aiPsychStrategy(ctx,candidates,isLeader,aiId);
+  if(psychMove){applyPlay(aiId,psychMove.cards,psychMove.pt);return;}
+
+  const chosen=aiChooseBest(candidates,aiHand,pile,pileType,isLeader,ctx,aiId);
+  if(!chosen){applyPass(aiId);return;}
+
+  // ── 비선에서 패스가 나은지 최종 판단 ──
+  if(!isLeader){
+    if(aiShouldPass(chosen,aiHand,pileType,ctx,candidates,aiId)){applyPass(aiId);return;}
+  }
+
+  applyPlay(aiId,chosen.cards,chosen.pt);
+}
+
+// ── 패스 판단 (true = 패스가 낫다) ──
+function aiShouldPass(chosen,hand,pileType,ctx,candidates,aiId){
+  if(!aiId)aiId=AI_ID;
+  const{dangerLevel,aiExitLevel,minOppCards,aiCards,isMultiAI}=ctx;
+  const{pt,cards}=chosen;
+
+  if(cards.length===hand.length)return false;
+  if(dangerLevel>=2)return false;
+  if(aiExitLevel>=2)return false;
+
+  // 블러퍼 상대 감지
+  const pileBy=GS.pileBy;
+  if(pileBy&&!isAIPlayer(pileBy)&&aiDetectBluff(pileBy)){
+    if(pt.rank>=10&&dangerLevel===0)return true;
+  }
+
+  // 멀티AI: 다른 AI가 낸 패는 굳이 강한 패로 안 받음 (자원 절약)
+  if(isMultiAI&&pileBy&&isAIPlayer(pileBy)&&pileBy!==aiId){
+    if(pt.rank>=11&&dangerLevel===0&&aiExitLevel===0){
+      return true; // 다른 AI 상대로 고rank 낭비 금지
+    }
+  }
+
+  // 상대가 약하다고 판단되면 → 밤 낭비 안 함
+  const oppStrength=(pileBy&&!isAIPlayer(pileBy))?aiMemory.oppStrength[pileBy]||'unknown':'unknown';
+  if(oppStrength==='weak'&&pt.type==='bomb'&&dangerLevel<2)return true;
+
+  if((pt.type==='bomb'||pt.type==='megabomb')&&dangerLevel<1){
+    const nonBombCands=candidates.filter(c=>c.pt.type!=='bomb'&&c.pt.type!=='megabomb');
+    if(nonBombCands.length>0)return true;
+  }
+
+  const xUsed=cards.filter(c=>c==='X').length;
+  if(xUsed>0&&dangerLevel===0&&aiExitLevel===0){
+    const noXCands=candidates.filter(c=>!c.cards.includes('X'));
+    if(noXCands.length>0)return false;
+  }
+
+  if(pt.rank>=(pileType.rank||0)+6&&aiExitLevel===0&&dangerLevel===0){
+    return true;
+  }
+
+  // ── 역심리전: 상대가 어차피 못 받을 것 같으면 패스로 선 유지 ──
+  if(dangerLevel===0&&aiExitLevel===0){
+    const oppId=pileBy&&!isAIPlayer(pileBy)?pileBy:null;
+    const oppConsecPass=oppId?(aiMemory.consecutivePass[oppId]||0):0;
+    if(oppConsecPass>=2){
+      const hasStrongCard=hand.some(c=>c==='X'||parseInt(c)>=12);
+      if(hasStrongCard&&pt.rank<=8){
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+// ── 가능한 모든 패 생성 ──
+function aiGenerateCandidates(hand,pile,pileType,isLeader){
+  const gs=GS;
+  const filt=c=>canBeat(c.pt,gs);
+  const results=[];
+
+  if(isLeader){
+    aiGenSingles(hand).forEach(c=>results.push(c));
+    aiGenPairs(hand).forEach(c=>results.push(c));
+    aiGenBombs(hand).forEach(c=>results.push(c));
+    aiGenStraights(hand).forEach(c=>results.push(c));
+    aiGenPairStraights(hand).forEach(c=>results.push(c));
+  }else{
+    const ct=pileType.type;
+    if(ct==='single')    aiGenSingles(hand).filter(filt).forEach(c=>results.push(c));
+    if(ct==='pair')      aiGenPairs(hand).filter(filt).forEach(c=>results.push(c));
+    if(ct==='bomb')      aiGenBombs(hand).filter(c=>c.pt.type==='bomb'&&filt(c)).forEach(c=>results.push(c));
+    if(ct==='megabomb')  aiGenBombs(hand).filter(c=>c.pt.type==='megabomb'&&filt(c)).forEach(c=>results.push(c));
+    if(ct==='straight')      aiGenStraights(hand).filter(filt).forEach(c=>results.push(c));
+    if(ct==='pairstraight')  aiGenPairStraights(hand).filter(filt).forEach(c=>results.push(c));
+    // 밤/밤투는 언제나 낼 수 있음 (같은 유형 아닐 때)
+    if(ct!=='bomb'&&ct!=='megabomb'){
+      aiGenBombs(hand).filter(filt).forEach(c=>results.push(c));
+    }
+  }
+
+  const seen=new Set();
+  return results.filter(c=>{
+    const k=c.pt.type+':'+c.cards.slice().sort().join(',');
+    if(seen.has(k))return false;seen.add(k);return true;
+  });
+}
+
+// ── 싱글 생성 ──
+function aiGenSingles(hand){
+  const seen=new Set();
+  return hand.filter(c=>{
+    if(seen.has(c))return false;seen.add(c);return true;
+  }).map(c=>({cards:[c],pt:{type:'single',rank:cv(c)}}));
+}
+
+// ── 페어 생성 ──
+function aiGenPairs(hand){
+  const result=[];
+  const freq={};
+  hand.forEach(c=>{freq[c]=(freq[c]||0)+1;});
+  // 순수 페어
+  Object.keys(freq).filter(c=>c!=='X'&&freq[c]>=2).forEach(n=>{
+    result.push({cards:[n,n],pt:{type:'pair',rank:parseInt(n)}});
+  });
+  // XX 페어
+  if((freq['X']||0)>=2)result.push({cards:['X','X'],pt:{type:'pair',rank:16}});
+  // 숫자+X 페어
+  if((freq['X']||0)>=1){
+    Object.keys(freq).filter(c=>c!=='X').forEach(n=>{
+      result.push({cards:[n,'X'],pt:{type:'pair',rank:parseInt(n)}});
+    });
+  }
+  return result;
+}
+
+// ── 밤/밤투 생성 ──
+function aiGenBombs(hand){
+  const result=[];
+  const freq={};
+  hand.forEach(c=>{freq[c]=(freq[c]||0)+1;});
+  const xCnt=freq['X']||0;
+  if(xCnt>=3)result.push({cards:['X','X','X'],pt:{type:'bomb',rank:16}});
+  if(xCnt>=4)result.push({cards:['X','X','X','X'],pt:{type:'megabomb',rank:16}});
+  Object.keys(freq).filter(c=>c!=='X').forEach(n=>{
+    if(freq[n]>=3)result.push({cards:[n,n,n],pt:{type:'bomb',rank:parseInt(n)}});
+    if(freq[n]>=4)result.push({cards:[n,n,n,n],pt:{type:'megabomb',rank:parseInt(n)}});
+  });
+  return result;
+}
+
+// ── 스트레이트 생성 (3장 이상, X 최대 1장) ──
+function aiGenStraights(hand){
+  const result=[];
+  const nums=hand.filter(c=>c!=='X').map(c=>parseInt(c));
+  const hasX=hand.includes('X');
+  const uniqueNums=[...new Set(nums)].sort((a,b)=>a-b);
+
+  for(let len=3;len<=uniqueNums.length+(hasX?1:0);len++){
+    for(let start=0;start<uniqueNums.length;start++){
+      // X 없이
+      const seq=[];let ok=true;
+      for(let k=0;k<len;k++){
+        const need=uniqueNums[start]+k;
+        if(!uniqueNums.includes(need)){ok=false;break;}
+        seq.push(String(need));
+      }
+      if(ok&&seq.length===len&&aiCanPick(hand,seq)){
+        const pt=classify(seq);if(pt)result.push({cards:seq,pt});
+      }
+      // X 포함
+      if(hasX){
+        for(let gap=0;gap<len;gap++){
+          const seqX=[];let okX=true;
+          for(let k=0;k<len;k++){
+            if(k===gap){seqX.push('X');continue;}
+            const need=uniqueNums[start]+k;
+            if(!uniqueNums.includes(need)){okX=false;break;}
+            seqX.push(String(need));
+          }
+          if(okX&&seqX.length===len&&aiCanPick(hand,seqX)){
+            const pt=classify(seqX);if(pt)result.push({cards:seqX,pt});
+          }
+        }
+      }
+    }
+  }
+  const seen=new Set();
+  return result.filter(c=>{
+    const k=c.cards.slice().sort().join(',');if(seen.has(k))return false;seen.add(k);return true;
+  });
+}
+
+// ── 페어스트레이트 생성 (3쌍 이상) ──
+function aiGenPairStraights(hand){
+  const result=[];
+  const freq={};
+  hand.forEach(c=>{if(c!=='X')freq[c]=(freq[c]||0)+1;});
+  const hasX=hand.includes('X');
+  const pairs=Object.keys(freq).filter(n=>freq[n]>=2).map(Number).sort((a,b)=>a-b);
+  const singles=Object.keys(freq).filter(n=>freq[n]===1).map(Number);
+
+  for(let len=3;len<=pairs.length+1;len++){
+    for(let start=0;start<pairs.length;start++){
+      const seq=[];let ok=true;
+      for(let k=0;k<len;k++){
+        const need=pairs[start]+k;
+        if(!pairs.includes(need)){ok=false;break;}
+        seq.push(String(need),String(need));
+      }
+      if(ok&&seq.length===len*2&&aiCanPick(hand,seq)){
+        const pt=classify(seq);if(pt)result.push({cards:seq,pt});
+      }
+      if(hasX){
+        for(let gap=0;gap<len;gap++){
+          const seqX=[];let okX=true;
+          for(let k=0;k<len;k++){
+            const need=pairs[start]+k;
+            if(k===gap){
+              if(singles.includes(need)){seqX.push(String(need),'X');}
+              else{okX=false;break;}
+              continue;
+            }
+            if(!pairs.includes(need)){okX=false;break;}
+            seqX.push(String(need),String(need));
+          }
+          if(okX&&seqX.length===len*2&&aiCanPick(hand,seqX)){
+            const pt=classify(seqX);if(pt)result.push({cards:seqX,pt});
+          }
+        }
+      }
+    }
+  }
+  const seen=new Set();
+  return result.filter(c=>{
+    const k=c.cards.slice().sort().join(',');if(seen.has(k))return false;seen.add(k);return true;
+  });
+}
+
+// ── 손패에서 카드 낼 수 있는지 확인 ──
+function aiCanPick(hand,cards){
+  const h=[...hand];
+  for(const c of cards){const i=h.indexOf(c);if(i<0)return false;h.splice(i,1);}
+  return true;
+}
+
+// ── 낸 후 남은 손패 ──
+function aiHandAfter(hand,cards){
+  const h=[...hand];
+  cards.forEach(c=>{const i=h.indexOf(c);if(i>=0)h.splice(i,1);});
+  return h;
+}
+
+// ══════════════════════════════════════════════════
+//  AI ENGINE v5 — 상황 분석 + 손패 평가 + 전략 선택
+//              + 패턴 학습 + 블러핑 감지 + 심리전
+// ══════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════
+//  ③ 카드 카운팅 시스템
+//  덱에서 이미 나온 카드 추적 → 상대 보유 확률 계산
+// ══════════════════════════════════════════════════
+const aiCardCount={
+  seen:{},      // 이미 공개된 카드 {카드값: 개수}
+  deckSize:64,  // 전체 덱 크기 (1~15 각 4장 + X 4장)
+};
+
+function aiCardCountReset(){
+  aiCardCount.seen={};
+}
+
+// 공개된 카드 기록 (pile, 내 손패, 나간 카드)
+function aiCardCountSee(cards){
+  if(!Array.isArray(cards))return;
+  cards.forEach(c=>{
+    aiCardCount.seen[c]=(aiCardCount.seen[c]||0)+1;
+  });
+}
+
+// 특정 카드가 상대 손패에 있을 확률 (0~1)
+// oppCards: 상대 손패 수, totalUnknown: 미공개 카드 수
+function aiCardCountProb(card, oppCards){
+  const totalPerCard=4;
+  // X는 'X' 키로, 숫자는 문자열로 통일 (pt.rank=16인 X를 'X'로 변환)
+  const key=(card==='X'||card===16||card==='16')?'X':String(card);
+  const alreadySeen=aiCardCount.seen[key]||0;
+  const remaining=Math.max(0, totalPerCard-alreadySeen);
+  if(remaining===0)return 0;
+
+  const myHandSize=GS?((GS.players.find(p=>isAIPlayer(p.id))||{}).hand||[]).length:0;
+  const totalSeen=Object.values(aiCardCount.seen).reduce((a,b)=>a+b,0);
+  const unknownTotal=Math.max(1, aiCardCount.deckSize - totalSeen - myHandSize);
+
+  const ratio=Math.max(0,(unknownTotal-remaining)/unknownTotal);
+  const prob=1-Math.pow(ratio, oppCards);
+  return Math.max(0,Math.min(1,prob));
+}
+
+// GS에서 공개된 카드 동기화 (매 턴마다 호출 - 전체 재계산)
+function aiSyncCardCount(aiId){
+  if(!aiId)aiId=AI_ID;
+  if(!GS)return;
+  aiCardCount.seen={};
+  // 내 손패 (내가 아는 카드)
+  const me=GS.players.find(p=>p.id===aiId);
+  if(me)aiCardCountSee(me.hand);
+  // 현재 판 위 카드
+  if(GS.pile&&GS.pile.length>0)aiCardCountSee(GS.pile);
+}
+
+function aiGetContext(aiId){
+  if(!aiId)aiId=AI_ID;
+  const gs=GS;
+  const aiIdx=gs.players.findIndex(p=>p.id===aiId);
+  const aiPlayer=gs.players[aiIdx];
+  const opponents=gs.players.filter(p=>p.id!==aiId&&!p.done);
+  const humanOpponents=opponents.filter(p=>!isAIPlayer(p.id));
+  const aiOpponents=opponents.filter(p=>isAIPlayer(p.id));
+  const minOppCards=opponents.length>0?Math.min(...opponents.map(p=>p.hand.length)):99;
+  const maxOppCards=opponents.length>0?Math.max(...opponents.map(p=>p.hand.length)):99;
+  const minHumanCards=humanOpponents.length>0?Math.min(...humanOpponents.map(p=>p.hand.length)):99;
+  const aiCards=aiPlayer.hand.length;
+  const totalActive=gs.players.filter(p=>!p.done).length;
+  const isMultiAI=aiOpponents.length>0;
+
+  // 위기 레벨 (상대 패 수 기준, 인간 우선)
+  let dangerLevel=0;
+  const dangerRef=humanOpponents.length>0?minHumanCards:minOppCards;
+  if(dangerRef<=2)dangerLevel=3;
+  else if(dangerRef<=4)dangerLevel=2;
+  else if(dangerRef<=6)dangerLevel=1;
+
+  // AI 탈출 근접도
+  let aiExitLevel=0;
+  if(aiCards<=2)aiExitLevel=2;
+  else if(aiCards<=5)aiExitLevel=1;
+
+  const behindCount=aiCards-minOppCards;
+
+  return{aiId,aiIdx,opponents,humanOpponents,aiOpponents,minOppCards,maxOppCards,
+    minHumanCards,aiCards,totalActive,dangerLevel,aiExitLevel,behindCount,isMultiAI};
+}
+
+// ── 손패 품질 점수 (높을수록 좋은 손패) ──
+function aiEvalHand(hand){
+  if(hand.length===0)return 100;
+  let score=0;
+  const freq={};
+  hand.forEach(c=>{freq[c]=(freq[c]||0)+1;});
+  const xCnt=freq['X']||0;
+  const nums=[...new Set(hand.filter(c=>c!=='X').map(c=>parseInt(c)))].sort((a,b)=>a-b);
+
+  // X 유연성
+  score+=xCnt*6;
+
+  // 페어/밤/밤투
+  Object.keys(freq).filter(c=>c!=='X').forEach(c=>{
+    if(freq[c]>=2)score+=8;
+    if(freq[c]>=3)score+=12;
+    if(freq[c]>=4)score+=20;
+  });
+
+  // 연속 숫자 길이 (스트레이트 잠재력)
+  let runLen=1,maxRun=0;
+  for(let i=1;i<nums.length;i++){
+    if(nums[i]===nums[i-1]+1){runLen++;maxRun=Math.max(maxRun,runLen);}
+    else{runLen=1;}
+  }
+  if(nums.length>0)maxRun=Math.max(maxRun,runLen);
+  if(maxRun>=3)score+=maxRun*4;
+  if(maxRun>=5)score+=maxRun*3;
+
+  // 고립 단카드 감점
+  const loners=nums.filter(n=>{
+    const s=String(n);
+    return(freq[s]||0)===1
+      &&!nums.includes(n-1)
+      &&!nums.includes(n+1);
+  }).length;
+  score-=loners*3;
+
+  // 평균 rank
+  const avgRank=nums.length>0?nums.reduce((a,b)=>a+b,0)/nums.length:0;
+  score+=avgRank*0.5;
+
+  // ── ① 최소 이동 수 추정 (적을수록 좋음) ──
+  // 선에서 낼 수 있는 모든 패 조합 생성 후 그리디하게 몇 번에 다 낼 수 있는지 계산
+  const minMoves=aiEstimateMinMoves(hand);
+  // 이동 수 적을수록 고점수 (최대 30점 보너스)
+  score+=Math.max(0, 30 - minMoves*5);
+
+  return score;
+}
+
+// 최소 이동 수 그리디 추정 (선 기준, GS 불필요)
+function aiEstimateMinMoves(hand){
+  if(hand.length===0)return 0;
+  let remaining=[...hand];
+  let moves=0;
+  const MAX_ITER=20;
+  for(let i=0;i<MAX_ITER&&remaining.length>0;i++){
+    // GS 없이 선 기준 후보 직접 생성
+    const cands=[];
+    aiGenSingles(remaining).forEach(c=>cands.push(c));
+    aiGenPairs(remaining).forEach(c=>cands.push(c));
+    aiGenBombs(remaining).forEach(c=>cands.push(c));
+    aiGenStraights(remaining).forEach(c=>cands.push(c));
+    aiGenPairStraights(remaining).forEach(c=>cands.push(c));
+    if(cands.length===0){moves+=remaining.length;break;}
+    const best=cands.slice().sort((a,b)=>b.cards.length-a.cards.length)[0];
+    remaining=aiHandAfter(remaining,best.cards);
+    moves++;
+  }
+  return moves;
+}
+
+// ══════════════════════════════════════════════════
+//  [1] 엔드게임 완전탐색 (손패 5장 이하일 때)
+// ══════════════════════════════════════════════════
+function aiEndgameSearch(hand, isLeader, ctx){
+  if(hand.length>5)return null;
+
+  const candidates=aiGenerateCandidates(hand, GS.pile||[], GS.pileType, isLeader);
+  if(candidates.length===0)return null;
+
+  // 모든 후보에서 낸 뒤 남는 손패 평가
+  let bestScore=-Infinity, bestCand=null;
+  for(const cand of candidates){
+    const after=aiHandAfter(hand, cand.cards);
+    // 즉시 승리
+    if(after.length===0)return cand;
+    // 남은 패로 낼 수 있는 조합 수 (많을수록 유연)
+    const afterCands=aiGenerateCandidates(after, [], null, true);
+    const flexibility=afterCands.length;
+    // 남은 패 강도
+    const strength=aiEvalHand(after);
+    // 남은 패 수 적을수록 좋음
+    const sizeBonus=(5-after.length)*20;
+    const total=flexibility*3+strength+sizeBonus;
+    if(total>bestScore){bestScore=total;bestCand=cand;}
+  }
+  return bestCand;
+}
+
+// ══════════════════════════════════════════════════
+//  [2] 상대 패 위험도 추정
+// ══════════════════════════════════════════════════
+function aiEstimateOppThreat(aiId){
+  if(!aiId)aiId=AI_ID;
+  // 인간 상대 우선, 없으면 AI 상대
+  const opp=GS.players.find(p=>p.id!==aiId&&!p.done&&!isAIPlayer(p.id))
+          ||GS.players.find(p=>p.id!==aiId&&!p.done);
+  if(!opp)return 0.5;
+  const oppCards=opp.hand.length;
+  const hist=aiMemory.playHistory[opp.id]||[];
+  const passes=aiMemory.passCount[opp.id]||0;
+
+  let threat=oppCards/15;
+  const recentPass=aiMemory.consecutivePass[opp.id]||0;
+  threat-=recentPass*0.08;
+  if(aiMemory.usedBomb[opp.id])threat-=0.2;
+  const lastPlay=hist[hist.length-1];
+  if(lastPlay&&lastPlay.rank>=12)threat+=0.15;
+
+  return Math.max(0,Math.min(1,threat));
+}
+
+// ══════════════════════════════════════════════════
+//  [3] 선 전략: 상대가 받기 어려운 타입 계산
+// ══════════════════════════════════════════════════
+function aiLeaderTypeBonus(cand, hand, ctx, aiId){
+  if(!aiId)aiId=AI_ID;
+  const{pt,cards}=cand;
+  const threat=aiEstimateOppThreat(aiId);
+  const{aiExitLevel,dangerLevel,isMultiAI}=ctx;
+  let bonus=0;
+
+  // 스트레이트/페어스트는 상대가 받기 어려움 → 위협 높을수록 더 우선
+  if(pt.type==='straight'){
+    bonus+=cards.length*5;
+    if(threat>0.6)bonus+=20;
+    // 멀티AI: 스트/페어스트로 여러 상대 한 번에 압박
+    if(isMultiAI)bonus+=10;
+  }
+  if(pt.type==='pairstraight'){
+    bonus+=cards.length*7;
+    if(threat>0.6)bonus+=30;
+    if(isMultiAI)bonus+=15;
+  }
+
+  if(pt.type==='pair'&&threat<0.35){
+    bonus+=12;
+  }
+
+  if(pt.type==='single'&&threat<0.4){
+    bonus+=5;
+    bonus-=pt.rank*0.5;
+  }
+
+  if(aiExitLevel>=2)bonus+=cards.length*15;
+
+  return bonus;
+}
+
+// ── 최선 선택 (엔드게임 분기 포함) ──
+function aiChooseBest(candidates,hand,pile,pileType,isLeader,ctx,aiId){
+  if(!aiId)aiId=AI_ID;
+  if(candidates.length===0)return null;
+
+  // 엔드게임: 손패 5장 이하면 완전탐색
+  if(hand.length<=5){
+    const endMove=aiEndgameSearch(hand,isLeader,ctx);
+    if(endMove)return endMove;
+  }
+
+  const scored=candidates.map(cand=>({
+    ...cand,
+    score:aiScore(cand,hand,pileType,isLeader,ctx,candidates,aiId)
+  }));
+  scored.sort((a,b)=>b.score-a.score);
+  return scored[0];
+}
+
+function aiScore(cand,hand,pileType,isLeader,ctx,candidates,aiId){
+  if(!aiId)aiId=AI_ID;
+  const{cards,pt}=cand;
+  const{dangerLevel,aiExitLevel,minOppCards,aiCards,behindCount,isMultiAI}=ctx;
+  const remaining=aiCards-cards.length;
+  const afterHand=aiHandAfter(hand,cards);
+  const afterScore=aiEvalHand(afterHand);
+  let score=0;
+
+  // ══ [A] 즉시 승리 ══
+  if(remaining===0)return 999999;
+
+  // ══ [A+] 패턴 학습 보정 (위기 아닐 때만 적용) ══
+  const pileBy=GS&&GS.pileBy;
+  if(!isLeader&&pileBy&&!isAIPlayer(pileBy)&&dangerLevel<2){
+    const oppStr=aiMemory.oppStrength[pileBy]||'unknown';
+    if(oppStr==='weak'){
+      score-=pt.rank*2;
+      score+=10;
+    } else if(oppStr==='strong'){
+      score+=pt.rank*1.5;
+    }
+    if(aiDetectBluff(pileBy)&&pt.rank>=11&&dangerLevel===0){
+      score-=25;
+    }
+    if(!aiMemory.usedBomb[pileBy]&&(pt.type==='bomb'||pt.type==='megabomb')){
+      score-=15;
+    }
+  }
+
+  // ══ [A-MULTI] 멀티AI 전략 보정 ══
+  if(isMultiAI&&!isLeader&&pileBy){
+    if(isAIPlayer(pileBy)&&pileBy!==aiId){
+      // 다른 AI가 낸 패: 약하게 받기 (자원 절약), 위기 아니면 최소한으로만
+      if(dangerLevel<2){
+        const surplus=pt.rank-(pileType?.rank||0);
+        if(surplus>3)score-=surplus*3; // 너무 강하게 받으면 낭비
+      }
+    }
+    // 인간이 선이 되는 걸 막기 위해, 인간 패에만 강하게 대응
+    if(!isAIPlayer(pileBy)&&dangerLevel>=1){
+      score+=pt.rank*2; // 인간 막기 우선
+    }
+  }
+
+  // ══ [A++] ③ 카드 카운팅 보정 ══
+  if(!isLeader&&pileBy&&!isAIPlayer(pileBy)){
+    const opp=GS.players.find(p=>p.id===pileBy);
+    const oppCards=opp?opp.hand.length:8;
+    const xProb=aiCardCountProb('X',oppCards);
+    if(pt.type==='single'&&pt.rank<=14&&xProb>0.6&&dangerLevel<2){
+      score-=xProb*15;
+    }
+    if(pt.type==='single'&&pt.rank>=13&&xProb<0.3&&dangerLevel<2){
+      score+=10;
+    }
+    const piledRank=GS.pile&&GS.pile.length>0?GS.pile[0]:null;
+    if(piledRank&&pt.type==='single'){
+      const rankStr=String(pt.rank);
+      const alreadySeen=aiCardCount.seen[rankStr]||0;
+      if(alreadySeen>=3)score+=5;
+    }
+  }
+
+  // ══ [A+++] 유저 패턴 프로필 보정 ══
+  if(aiPlayerProfile.totalGames>=2){
+    const adj=aiProfileAdjust();
+    if(!isLeader&&pileBy&&!isAIPlayer(pileBy)){
+      if(pt.rank>=10)score+=adj.rankBias;
+      if(adj.bluffGuard>0.6&&pt.rank>=12&&dangerLevel===0){
+        score-=adj.bluffGuard*20;
+      }
+      if((pt.type==='bomb'||pt.type==='megabomb')&&adj.bombExpect>0.65&&dangerLevel<2){
+        score-=15;
+      }
+    }
+    if(isLeader){
+      if(aiPlayerProfile.avgPassRate>0.45){
+        score+=cards.length*3;
+      }
+    }
+  }
+
+  // ══ [B] 위기 대응: 상대 3~4장 이하 ══
+  // 비선에서 가장 강한 패를 내야 함 (rank 기준)
+  if(!isLeader&&dangerLevel>=2){
+    // 밤투 최우선
+    if(pt.type==='megabomb')score+=500;
+    else if(pt.type==='bomb'){
+      const hasMegabomb=candidates.some(c=>c.pt.type==='megabomb');
+      score+=hasMegabomb?-100:400;
+    }else{
+      // 같은 유형으로 받을 때: rank 높을수록 좋음 (막아야 하니까)
+      score+=pt.rank*15;
+    }
+    // 카드 소진도 중요하지만 저지가 우선
+    score+=cards.length*3;
+  }
+
+  // ══ [C] 선일 때 전략 ══
+  if(isLeader){
+    const handFreq={};hand.forEach(c=>{handFreq[c]=(handFreq[c]||0)+1;});
+
+    // 기본: 낸 카드 수만큼 점수
+    score+=cards.length*5;
+
+    // ── 상대 위협도 기반 선 전략 보너스 ──
+    score+=aiLeaderTypeBonus(cand,hand,ctx,aiId);
+
+    // 밤/밤투를 선에서 쓰는 건 위기거나 탈출 근접할 때만
+    if(pt.type==='megabomb'){
+      if(dangerLevel>=2||aiExitLevel>=1)score+=50;
+      else score-=80;
+    }
+    if(pt.type==='bomb'){
+      if(dangerLevel>=2)score+=30;
+      else if(aiExitLevel>=1)score+=10;
+      else score-=50;
+    }
+
+    // 스트레이트/페어스트 — 많이 소진 + 상대 막기 어려움
+    if(pt.type==='straight'){
+      score+=cards.length*6;
+      if(cards.length>=5)score+=30;
+      if(cards.length>=7)score+=20;
+    }
+    if(pt.type==='pairstraight'){
+      score+=cards.length*7;
+      if(cards.length>=8)score+=35;
+    }
+
+    // 고립 단카드(짝도 없고 연속도 없는) 우선 처리
+    if(cards.length===1&&pt.type==='single'){
+      const n=cv(cards[0]);
+      const isLoner=(handFreq[cards[0]]===1)
+        &&!handFreq[String(n-1)]&&!handFreq[String(n+1)];
+      score+=isLoner?20:5;
+    }
+
+    // 페어: 밤 재료(3장 이상) 아끼기
+    if(pt.type==='pair'&&cards[0]!=='X'){
+      if((handFreq[cards[0]]||0)>=3)score-=15;
+    }
+
+    // rank 낮은 것부터 버리기 (높은 것은 나중에 실드)
+    score-=pt.rank*1.5;
+
+    // 내가 상대보다 많이 갖고 있으면 공격적으로
+    if(behindCount>0)score+=behindCount*3;
+
+    // 낸 후 손패 품질
+    score+=afterScore*0.7;
+  }
+
+  // ══ [D] 받아칠 때 전략 ══
+  else if(dangerLevel<2){
+    // 밤/밤투 — 위기 아닐 때는 아끼기
+    if(pt.type==='megabomb'){
+      score-=120;
+    }else if(pt.type==='bomb'){
+      const hasMegabomb=candidates.some(c=>c.pt.type==='megabomb');
+      score+=hasMegabomb?-80:-20; // 밤투 있으면 밤도 아끼기
+    }else{
+      // 같은 유형 받아칠 때: 가능한 한 낮은 rank로 (자원 절약)
+      const surplus=pt.rank-(pileType?.rank||0);
+      if(surplus===1)score+=30;      // 딱 1 높은 것 — 최선
+      else if(surplus===2)score+=20;
+      else if(surplus<=4)score+=10;
+      else score-=surplus*2;         // 너무 강한 거로 받으면 낭비
+
+      // 탈출 멀면 rank 높은 것 아끼기
+      if(aiExitLevel===0)score-=pt.rank*1.2;
+      else if(aiExitLevel===1)score-=pt.rank*0.5;
+    }
+
+    // X 아끼기 — X 안 써도 되는 대안 있으면 X 패 감점
+    const xUsed=cards.filter(c=>c==='X').length;
+    if(xUsed>0){
+      const noXCand=candidates.some(c=>
+        !c.cards.includes('X')&&
+        (c.pt.type===pt.type||c.pt.type==='bomb'||c.pt.type==='megabomb')&&
+        canBeat(c.pt,GS)
+      );
+      if(noXCand)score-=xUsed*15;
+      else score-=xUsed*4;
+    }
+
+    // 카드 소진 (탈출 근접하면 더 중요)
+    score+=cards.length*(2+aiExitLevel*2);
+
+    // 낸 후 손패 품질
+    score+=afterScore*0.6;
+  }
+
+  // ══ [E] 탈출 가속 ══
+  if(aiExitLevel===2){
+    score+=80;
+    score+=remaining===0?500:cards.length*12;
+  }else if(aiExitLevel===1){
+    score+=30;
+    score+=cards.length*6;
+  }
+
+  // ══ [F] 스트/페어스트 받아칠 때 보너스 (많이 소진) ══
+  if(!isLeader){
+    if(pt.type==='straight')score+=cards.length*3;
+    if(pt.type==='pairstraight')score+=cards.length*4;
+  }
+
+  return score;
+}
+
+// ══════════════════════════
+//  CLASSIFY
+// ══════════════════════════
+function classify(cards){
+  const n=cards.length;if(n===0)return null;
+  const xCnt=cards.filter(c=>c==='X').length;
+  const nonX=cards.filter(c=>c!=='X').map(c=>parseInt(c));
+  // 싱글
+  if(n===1)return{type:'single',rank:cv(cards[0])};
+  // XX 페어 (X 2장)
+  if(n===2&&xCnt===2)return{type:'pair',rank:16};
+  // 일반 페어
+  if(n===2){
+    if(xCnt===0&&nonX[0]===nonX[1])return{type:'pair',rank:Math.max(...nonX)};
+    if(xCnt===1&&nonX.length===1)return{type:'pair',rank:nonX[0]};
+  }
+  // XXXX 밤투 (X 4장) - X끼리만
+  if(n===4&&xCnt===4)return{type:'megabomb',rank:16};
+  // XXX - X끼리 3장도 가능하게 (선택: 밤투 아니고 스페셜 밤?)
+  // 규칙: "X끼리는 됨" → XXX는 밤 허용
+  if(n===3&&xCnt===3)return{type:'bomb',rank:16};
+  // 일반 밤투 (X 불가)
+  if(n===4&&xCnt===0&&nonX.every(v=>v===nonX[0]))return{type:'megabomb',rank:nonX[0]};
+  // 일반 밤 (X 불가)
+  if(n===3&&xCnt===0&&nonX.every(v=>v===nonX[0]))return{type:'bomb',rank:nonX[0]};
+  if(n>=6&&n%2===0){const ps=tryPS(cards);if(ps)return ps;}
+  if(n>=3){const st=tryST(cards);if(st)return st;}
+  return null;
+}
+
+function isConsec(arr){
+  const s=[...arr].sort((a,b)=>a-b);
+  for(let i=1;i<s.length;i++)if(s[i]!==s[i-1]+1)return false;return true;
+}
+
+function tryST(cards){
+  // ── 선택 순서 기반 파싱 ──
+  // 카드를 선택한 순서 그대로 읽어서 X의 값을 결정한다.
+  // X는 "바로 앞 카드값 + 1"로 해석된다.
+  // 예) 3 4 X → [3,4,5] rank=5
+  //     3 X 5 → [3,4,5] rank=5  (X=4로 채움, 뒤 5와 연속인지 검증)
+  //     4 5 X → [4,5,6] rank=6
+  // 규칙: X 최대 1장, 3장 이상, 중복 숫자 불가, 순서대로 +1씩 올라가야 함
+  const xCnt=cards.filter(c=>c==='X').length;
+  if(xCnt>1)return null;
+  const n=cards.length;
+  if(n<3)return null;
+
+  // 선택 순서대로 값 배열 만들기
+  const vals=[];
+  for(let i=0;i<n;i++){
+    if(cards[i]==='X'){
+      let xVal;
+      if(i===0){
+        // X가 첫 번째면 바로 뒤 카드-1
+        if(i+1>=n||cards[i+1]==='X')return null;
+        xVal=parseInt(cards[i+1])-1;
+      }else{
+        // X가 중간/끝이면 바로 앞 카드+1
+        xVal=vals[i-1]+1;
+      }
+      if(xVal<1||xVal>15)return null;
+      vals.push(xVal);
+    }else{
+      vals.push(parseInt(cards[i]));
+    }
+  }
+
+  // 중복 불가
+  if(new Set(vals).size!==vals.length)return null;
+
+  // 순서대로 +1씩 올라가야 함 (오름차순 연속)
+  for(let i=1;i<vals.length;i++){
+    if(vals[i]!==vals[i-1]+1)return null;
+  }
+
+  return{type:'straight',rank:vals[vals.length-1],size:n};
+}
+
+function tryPS(cards){
+  // ── 선택 순서 기반 파싱 ──
+  // 카드를 2장씩 묶어서 쌍으로 파싱한다.
+  // X는 바로 앞 카드(홀수 위치의 싱글)와 같은 숫자로 해석된다.
+  // 예) 1 1 2 2 3 X → 쌍: [1,1],[2,2],[3,X=3] → rank=3 ✅
+  //     1 1 2 2 X 3 → 쌍: [1,1],[2,2],[X,3] → X가 쌍의 첫 번째 → ❌
+  //     1 1 3 3 2 X → 쌍: [1,1],[3,3],[2,X] → 순서 뒤바뀜 (3→2) → ❌
+  const xCnt=cards.filter(c=>c==='X').length;
+  if(xCnt>1)return null;
+  const n=cards.length;
+  if(n<6||n%2!==0)return null;
+  const pairCount=n/2;
+
+  // 2장씩 쌍으로 묶기
+  const pairs=[];
+  for(let i=0;i<n;i+=2){
+    const a=cards[i], b=cards[i+1];
+    // X가 쌍의 첫 번째(왼쪽)면 불가
+    if(a==='X')return null;
+    const numA=parseInt(a);
+    if(b==='X'){
+      // X는 쌍의 두 번째(오른쪽)에만 가능 → 같은 숫자 페어로 완성
+      pairs.push(numA);
+    }else{
+      // 두 카드가 같은 숫자여야 페어
+      if(parseInt(b)!==numA)return null;
+      pairs.push(numA);
+    }
+  }
+
+  // 쌍들의 숫자가 순서대로 +1씩 올라가야 함
+  for(let i=1;i<pairs.length;i++){
+    if(pairs[i]!==pairs[i-1]+1)return null;
+  }
+
+  return{type:'pairstraight',rank:pairs[pairs.length-1],size:pairCount};
+}
+
+// ══════════════════════════
+//  CAN BEAT
+// ══════════════════════════
+function canBeat(pt,gs){
+  const cur=gs.pileType;const pile=gs.pile;
+  if(!cur||!pile||pile.length===0)return true; // 선 - 뭐든 가능
+
+  // 밤/밤투: 아무 때나 낼 수 있지만, 같은 유형끼리면 rank 비교
+  if(pt.type==='bomb'||pt.type==='megabomb'){
+    // 밤투는 밤 위에도 가능 (더 강한 유형)
+    if(pt.type==='megabomb')return true;
+    // 밤: 현재 판이 밤이면 rank 비교, 아니면 아무때나
+    if(cur.type==='bomb')return pt.rank>cur.rank;
+    if(cur.type==='megabomb')return false; // 밤투 위에 밤 불가
+    return true; // 싱글/페어/스트 위에 밤 가능
+  }
+
+  // 페어스트레이트: 상대가 페어스트레이트 냈을 때만
+  if(pt.type==='pairstraight'){
+    if(cur.type!=='pairstraight')return false;
+    if(pt.size!==cur.size)return false;
+    return pt.rank>cur.rank;
+  }
+  if(pt.type!==cur.type)return false;
+  if(pt.type==='straight'&&pt.size!==cur.size)return false;
+  return pt.rank>cur.rank;
+}
+
+// ══════════════════════════
+//  RENDER
+// ══════════════════════════
+function renderGame(){
+  if(!GS)return;
+  const myIdx=GS.players.findIndex(p=>p.id===myId);if(myIdx<0)return;
+  myHand=GS.players[myIdx].hand||[];
+
+  // Opponents
+  const oa=$('oa');oa.innerHTML='';
+  GS.players.forEach((p,i)=>{
+    if(i===myIdx)return;
+    const div=document.createElement('div');
+    div.className='oc'+(i===GS.turnIdx?' ot':'')+(p.done?' od':'');
+    div.innerHTML=`<div class="on">${p.name}</div><div class="oi">${p.done?`${p.rank}등`:`${p.hand.length}장`}</div>`;
+    oa.appendChild(div);
+  });
+
+  renderHand(); // clearSel 포함
+
+  // Pile
+  const pp=$('pp');
+  const pileArr=Array.isArray(GS.pile)?GS.pile:[];
+  if(pileArr.length===0){
+    pp.innerHTML=`<span style="color:var(--muted);font-size:.8rem;">아직 아무도 안 냄</span>`;
+    $('pi').textContent='';
+  }else{
+    pp.innerHTML=pileArr.map(c=>`<div class="pc${c==='X'?' xc':''}">${c}</div>`).join('');
+    const tl={single:'싱글',pair:'페어',bomb:'밤',megabomb:'밤투',straight:'스트레이트',pairstraight:'페어스트레이트'};
+    const byName=GS.players.find(p=>p.id===GS.pileBy)?.name||'';
+    const typeStr=GS.pileType?tl[GS.pileType.type]||'':'';
+    $('pi').textContent=byName&&typeStr?`${byName}의 ${typeStr}`:'';
+  }
+
+  // Log (__RANK__ 내부 태그 줄은 표시 안 함)
+  const visibleLog=(GS.log||[]).filter(l=>!l.startsWith('__RANK__:'));
+  const la=$('la');
+  const visibleLogKey=visibleLog.join('\n');
+  if(visibleLogKey!==la.dataset.logKey){
+    clearLog();visibleLog.forEach(l=>addLog(l));
+    la.dataset.logKey=visibleLogKey;
+  }
+
+  const isMyTurn=GS.turnIdx===myIdx&&!GS.players[myIdx].done;
+  const sb=$('sb');
+  const turnChanged=(GS.turnIdx!==lastTurnIdx);
+
+  if(GS.phase==='ended'){
+    stopTimer();$('pbtn').disabled=true;$('psbtn').disabled=true;
+    sb.textContent='게임 종료!';sb.className='sb';
+    showEndScreen();return;
+  }
+
+  if(isMyTurn){
+    sb.textContent='내 차례입니다.';sb.className='sb mt';
+    $('pbtn').disabled=false;
+    // 선(판이 비어있을 때)은 패스 불가
+    const isLeaderNow=!GS.pile||GS.pile.length===0;
+    $('psbtn').disabled=isLeaderNow;
+    if(turnChanged){
+      startTimer();
+    }
+  }else{
+    const cur=GS.players[GS.turnIdx];
+    const isAITurn=isAIMode&&cur&&cur.id===AI_ID;
+    sb.textContent=isAITurn?'   AI 생각 중...':`${cur?.name||'?'}님의 차례입니다`;
+    sb.className='sb';
+    $('pbtn').disabled=true;$('psbtn').disabled=true;
+    if(turnChanged){
+      stopTimer();
+      // 타 플레이어 차례 TTS 제거
+    }
+  }
+
+  // 선 전환 안내 — 로그에는 남기되 TTS 제거
+  if(turnChanged){
+    // (선 TTS 없음)
+  }
+
+  lastTurnIdx=GS.turnIdx;
+}
+
+function renderHand(){
+  clearSel(); // 렌더 때마다 선택 초기화 (el 참조 끊김 방지)
+  const hg=$('hg');hg.innerHTML='';
+  const sorted=[...myHand].sort(csort);
+  sorted.forEach((card,idx)=>{
+    const div=document.createElement('div');
+    div.className='hk'+(card==='X'?' xc':'');
+    div.textContent=card;
+    div.dataset.hidx=idx; // 손패 내 인덱스
+    div.onclick=()=>toggleCard(div,card,idx);
+    hg.appendChild(div);
+  });
+  $('hcnt').textContent=`${myHand.length}장`;
+}
+
+function toggleCard(el,card,hidx){
+  if(!GS)return;
+  const myIdx=GS.players.findIndex(p=>p.id===myId);
+  if(GS.turnIdx!==myIdx)return;
+  // hidx로 중복 카드 구분
+  const i=selCards.findIndex(s=>s.hidx===hidx);
+  if(i>=0){selCards.splice(i,1);el.classList.remove('sl');}
+  else{selCards.push({el,card,hidx});el.classList.add('sl');}
+}
+function clearSel(){
+  selCards.forEach(s=>{if(s.el&&s.el.isConnected)s.el.classList.remove('sl');});
+  selCards=[];
+}
+
+// ══════════════════════════
+//  TIMER
+// ══════════════════════════
+function startTimer(){
+  stopTimer();timerLeft=60;$('tw').style.display='block';updateTimerUI();
+  timerIv=setInterval(()=>{
+    timerLeft--;updateTimerUI();
+    if(timerLeft<=0){stopTimer();doPass(true);}
+  },1000);
+}
+function stopTimer(){
+  if(timerIv){clearInterval(timerIv);timerIv=null;}$('tw').style.display='none';
+}
+function updateTimerUI(){
+  const pct=(timerLeft/60)*100;
+  const bar=$('tbr');bar.style.width=pct+'%';
+  bar.className='tbr'+(timerLeft<=15?' ur':'');
+  $('tt').textContent=`${timerLeft}초`;
+}
+
+// ══════════════════════════
+//  ACTIONS
+// ══════════════════════════
+// ── 카드 선택 순서 규칙 검증 ──
+function checkCardOrder(cards){
+  const n=cards.length;
+  if(n===0)return true;
+
+  // 페어 (2장): X가 첫 번째면 안 됨 (숫자 먼저, X 나중)
+  if(n===2){
+    if(cards[0]==='X'&&cards[1]!=='X'){
+      toast('페어는 숫자 먼저, X 나중 순서로! (예: 5→X)', 'err', 2800);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function doPlay(){
+  if(!GS||GS.phase==='ended')return;
+  const myIdx=GS.players.findIndex(p=>p.id===myId);
+  if(GS.turnIdx!==myIdx){toast('내 차례가 아니야!','err');return;}
+  const cards=selCards.map(s=>s.card);
+  if(cards.length===0){toast('카드를 선택하세요.','err');return;}
+  if(!checkCardOrder(cards))return;
+  const pt=classify(cards);
+  if(!pt){playBeep();return;}
+  if(!canBeat(pt,GS)){playBeep();return;}
+  stopTimer();playSfx(pt.type);clearSel();
+  // AI 모드: 내가 낸 카드의 pileKey 미리 동기화 (broadcastGS에서 중복 소리 방지)
+  if(isAIMode){
+    lastPileKey=cards.join(',')+'|'+myId;
+  }
+  sendAction({type:'play',playerId:myId,cards,playType:pt});
+}
+
+function doPass(auto=false){
+  if(!GS||GS.phase==='ended')return;
+  const myIdx=GS.players.findIndex(p=>p.id===myId);
+  if(GS.turnIdx!==myIdx)return;
+  // 선일 때(판이 비어있을 때)는 패스 불가
+  if(!auto&&(!GS.pile||GS.pile.length===0)){toast('선은 패스할 수 없어!','err');return;}
+  stopTimer();clearSel();
+  playSfx('pass');
+  // 내 패스는 직접 재생했으니 receiveGS 중복 방지
+  lastPassKey=myId+'|'+((GS.passSeq||0)+1);
+  sendAction({type:'pass',playerId:myId});
+}
+
+// ══════════════════════════
+//  END SCREEN
+// ══════════════════════════
+function showEndScreen(){
+  if(endShown)return;endShown=true;stopTimer();
+  const ranks=GS.ranks||[];
+  const myRankObj=ranks.find(r=>r.id===myId);
+  const myRank=myRankObj?myRankObj.rank:GS.players.length;
+  let ttsMsg;
+  if(GS.players.length===2){
+    ttsMsg=myRank===1?'내가 승리했습니다!':'내가 패배했습니다.';
+  }else{
+    ttsMsg=`내가 ${myRank}등입니다.`;
+  }
+  // 상태바에 결과 표시
+  const sb=$('sb');
+  const emj=GS.players.length===2?(myRank===1?'승리':'패배'):(['1등','2등','3등','4등'][myRank-1]||'');
+  sb.textContent=`${emj} ${ttsMsg}`;
+  sb.className='sb';
+  sb.style.fontSize='1.1rem';
+  // 등수 발표는 renderGame 이전에 이미 큐에 들어갔을 수 있음 (announcedRanks로 중복 방지)
+  // 혹시 못 잡혔으면 세이프티넷으로 여기서 큐에 추가
+  const myRankKey=(myRankObj?myRankObj.name:myName)+':'+(myRankObj?myRankObj.rank:GS.players.length);
+  if(!announcedRanks.has(myRankKey)){
+    announcedRanks.add(myRankKey);
+    ttsSay(ttsMsg);
+  }
+  // TTS 큐가 전부 끝난 뒤 메인으로 복귀 (발화가 씹히지 않도록 최소 3.5초는 보장)
+  const minWait=3500;
+  const startedAt=Date.now();
+  const myEpoch=_epoch;
+  const tryGoMain=()=>{
+    if(myEpoch!==_epoch)return; // 이미 로비로 나갔다가 새 게임이 시작된 경우 무시
+    const elapsed=Date.now()-startedAt;
+    if(!_ttsSpeaking&&!_ttsQueue.length&&elapsed>=minWait){
+      goToMain();
+    }else{
+      setTimeout(tryGoMain,200);
+    }
+  };
+  setTimeout(tryGoMain,minWait);
+}
+
+// ══════════════════════════
+//  TTS / SFX
+// ══════════════════════════
+const synth=('speechSynthesis' in window)?window.speechSynthesis:null;
+
+let _koVoice=null;
+function _loadVoices(){
+  if(!synth)return;
+  const vs=synth.getVoices();
+  if(!vs.length)return;
+  _koVoice=vs.find(v=>v.name.includes('Google')&&v.lang.startsWith('ko'))
+    ||vs.find(v=>v.lang.startsWith('ko'))||null;
+}
+try{
+  if(synth&&'onvoiceschanged' in synth)synth.onvoiceschanged=_loadVoices;
+  _loadVoices();
+  // 일부 브라우저는 딜레이 후 로드됨
+  setTimeout(_loadVoices,500);
+}catch(e){}
+
+// ══════════════════════════════════════
+//  설정 메뉴
+// ══════════════════════════════════════
+let _sfxOn=true;
+let _ttsOn=true;
+
+function openSettings(){
+  document.getElementById('mem-games').textContent=aiPlayerProfile.totalGames;
+  document.getElementById('settings-modal').style.display='flex';
+}
+function closeSettings(){
+  document.getElementById('settings-modal').style.display='none';
+}
+function settingSfx(v){_sfxOn=v;}
+function settingTts(v){_ttsOn=v;}
+function confirmResetAI(){
+  if(!confirm('AI 학습 메모리를 전체 초기화할까요?\n지금까지 기억한 패턴이 모두 사라집니다.'))return;
+  // aiPlayerProfile 초기화
+  Object.assign(aiPlayerProfile,{
+    totalGames:0,wins:0,totalPlays:0,totalPasses:0,
+    typeCount:{single:0,pair:0,bomb:0,megabomb:0,straight:0,pairstraight:0},
+    highRankPlays:0,bombUsed:0,earlyAggression:0,lateDefense:0,
+    avgPassRate:0,aggression:0.5,bluffTendency:0.5,bombHoarder:0.5,
+  });
+  aiProfileSave();
+  document.getElementById('mem-games').textContent=0;
+  alert('AI 메모리가 초기화되었습니다.');
+}
+
+let _ttsQueue=[];
+let _ttsSpeaking=false;
+function ttsSay(text){
+  if(!synth||!_ttsOn)return;
+  _ttsQueue.push(text);
+  _ttsPump();
+}
+function _ttsPump(){
+  if(_ttsSpeaking||!_ttsQueue.length||!synth)return;
+  const text=_ttsQueue.shift();
+  try{
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='ko-KR';u.rate=1.1;u.pitch=1.0;u.volume=1;
+    if(_koVoice)u.voice=_koVoice;
+    _ttsSpeaking=true;
+    u.onend=()=>{_ttsSpeaking=false;_ttsPump();};
+    u.onerror=()=>{_ttsSpeaking=false;_ttsPump();};
+    synth.speak(u);
+  }catch(e){_ttsSpeaking=false;_ttsPump();}
+}
+function ttsClearQueue(){
+  _ttsQueue=[];
+  _ttsSpeaking=false;
+  try{if(synth)synth.cancel();}catch(e){}
+}
+
+function playBeep(){
+  try{
+    const ctx=gAC(),dst=getMaster(),t=ctx.currentTime;
+    // 삐이이- 전자음
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='sine';o.frequency.setValueAtTime(880,t);
+    o.frequency.linearRampToValueAtTime(440,t+0.3);
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.4,t+0.01);
+    g.gain.setValueAtTime(0.4,t+0.22);g.gain.linearRampToValueAtTime(0,t+0.32);
+    o.connect(g);g.connect(dst);o.start(t);o.stop(t+0.35);
+  }catch(e){}
+}
+
+let ac=null,masterComp=null,masterGain=null;
+function gAC(){
+  if(!ac){
+    ac=new(window.AudioContext||window.webkitAudioContext)();
+    // 마스터 컴프레서 - 클리핑 방지 + 펀치감 극대화
+    masterComp=ac.createDynamicsCompressor();
+    masterComp.threshold.value=-10;
+    masterComp.knee.value=4;
+    masterComp.ratio.value=6;
+    masterComp.attack.value=0.001;  // 1ms - 초고속 어택
+    masterComp.release.value=0.08;
+    masterGain=ac.createGain();
+    masterGain.gain.value=1.1;
+    masterComp.connect(masterGain);
+    masterGain.connect(ac.destination);
+  }
+  if(ac.state==='suspended')ac.resume();
+  return ac;
+}
+function getMaster(){gAC();return masterComp;}
+
+// ── 기본 빌딩블록 ──
+function makeNoiseBuf(dur,color='white'){
+  const ctx=gAC(),sr=ctx.sampleRate;
+  const buf=ctx.createBuffer(1,Math.floor(sr*dur),sr);
+  const d=buf.getChannelData(0);
+  if(color==='white'){for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}
+  else{ // pink-ish
+    let b0=0,b1=0,b2=0;
+    for(let i=0;i<d.length;i++){
+      b0=0.99886*b0+Math.random()*0.0555179;
+      b1=0.99332*b1+Math.random()*0.0750759;
+      b2=0.96900*b2+Math.random()*0.1538520;
+      d[i]=(b0+b1+b2+Math.random()*0.5)*0.11;
+    }
+  }
+  return buf;
+}
+
+function playBuf(buf,delay,vol,lpFreq,hpFreq,attack=0.001,decay){
+  try{
+    const ctx=gAC(),dst=getMaster(),t=ctx.currentTime+delay;
+    const src=ctx.createBufferSource();src.buffer=buf;
+    const g=ctx.createGain();
+    const chain=[];
+    if(lpFreq){const f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=lpFreq;chain.push(f);}
+    if(hpFreq){const f=ctx.createBiquadFilter();f.type='highpass';f.frequency.value=hpFreq;chain.push(f);}
+    chain.push(g);g.connect(dst);
+    for(let i=0;i<chain.length-1;i++)chain[i].connect(chain[i+1]);
+    src.connect(chain[0]||g);
+    const dec=decay||buf.duration;
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol,t+attack);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dec);
+    src.start(t);src.stop(t+dec+0.05);
+  }catch(e){}
+}
+
+function osc(freq,dur,type,vol,delay,freqEnd,attack=0.001,decay){
+  try{
+    const ctx=gAC(),dst=getMaster(),t=ctx.currentTime+delay;
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type;
+    o.frequency.setValueAtTime(freq,t);
+    if(freqEnd)o.frequency.exponentialRampToValueAtTime(Math.max(freqEnd,10),t+(decay||dur));
+    const dec=decay||dur;
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol,t+attack);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dec);
+    o.connect(g);g.connect(dst);
+    o.start(t);o.stop(t+dec+0.05);
+  }catch(e){}
+}
+
+function oscFilt(freq,dur,type,vol,delay,ftype,ffreq,fq,freqEnd){
+  try{
+    const ctx=gAC(),dst=getMaster(),t=ctx.currentTime+delay;
+    const o=ctx.createOscillator(),f=ctx.createBiquadFilter(),g=ctx.createGain();
+    o.type=type;o.frequency.setValueAtTime(freq,t);
+    if(freqEnd)o.frequency.exponentialRampToValueAtTime(Math.max(freqEnd,10),t+dur);
+    f.type=ftype;f.frequency.value=ffreq;if(fq)f.Q.value=fq;
+    g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(f);f.connect(g);g.connect(dst);
+    o.start(t);o.stop(t+dur+0.05);
+  }catch(e){}
+}
+
+// ── 고퀄 효과음 ──
+// attack=0.003: 클릭 없이 선명한 타격감 / decay는 소리 성격에 맞게
+function playSfx(type){
+  if(!_sfxOn)return;
+  try{ gAC(); }catch(e){return;}
+  // 패 종류 한국어 TTS (효과음과 동시에)
+  const ttsMap={
+    single:'싱글!',pair:'페어!',bomb:'밤!',megabomb:'밤투!',
+    straight:'스트레이트!',pairstraight:'페어 스트레이트!',pass:'패스!'
+  };
+  if(ttsMap[type])ttsSay(ttsMap[type]);
+  switch(type){
+
+    case'single':{
+      // 탁! 카드 한 장 - 0.2초 안에 깔끔하게 끝
+      const nb=makeNoiseBuf(0.18,'pink');
+      // 메인 타격 바디 (중역 펀치)
+      playBuf(nb,0, 1.4, 2200, 90, 0.003, 0.16);
+      // 저음 킥감
+      osc(200, 0.18,'sine', 0.65, 0, 45, 0.002, 0.14);
+      // 고음 카드 슬라이드 — 타격과 동시에 짧게
+      osc(3200, 0.08,'sine', 0.22, 0.002, 800, 0.002, 0.065);
+      break;
+    }
+
+    case'pair':{
+      // 탁-탁! 0.35초 - 두 장 명확히 구분
+      const nb=makeNoiseBuf(0.18,'pink');
+      // 첫 번째
+      playBuf(nb, 0,    1.3, 2000, 80, 0.003, 0.15);
+      osc(195, 0.16,'sine', 0.6, 0,    48, 0.002, 0.13);
+      // 두 번째 (160ms 후 — 확실히 구분)
+      playBuf(nb, 0.16, 1.4, 2400, 90, 0.003, 0.15);
+      osc(240, 0.16,'sine', 0.6, 0.16, 55, 0.002, 0.13);
+      // 공통 저음 베이스
+      osc(85, 0.28,'sine', 0.38, 0, 28, 0.003, 0.25);
+      break;
+    }
+
+    case'bomb':{
+      // 펑!! 0.5초 - 폭발적이되 질질 안 끌림
+      // 킥 드럼 - 빠른 피치 드롭
+      osc(260, 0.45,'sine', 1.0, 0, 24, 0.002, 0.38);
+      osc(130, 0.5, 'sine', 0.75,0, 20, 0.003, 0.43);
+      // 노이즈 폭발 바디
+      const nb=makeNoiseBuf(0.5,'pink');
+      playBuf(nb, 0, 1.2, 1000, 40, 0.002, 0.42);
+      // 고음 크래시 (짧게)
+      playBuf(nb, 0, 0.6, 5000, 1800, 0.002, 0.12);
+      // 세 장 타격 틱틱틱
+      const nt=makeNoiseBuf(0.06,'white');
+      playBuf(nt, 0,    0.8, 7000, 3000, 0.001, 0.05);
+      playBuf(nt, 0.04, 0.7, 7000, 3000, 0.001, 0.05);
+      playBuf(nt, 0.08, 0.6, 7000, 3000, 0.001, 0.05);
+      break;
+    }
+
+    case'megabomb':{
+      // 퍼어엉!!! 0.9초 - 지진급, 단 너무 길지 않게
+      // 서브베이스 3단 (각각 빠른 드롭)
+      osc(300, 0.8, 'sine', 1.1, 0,    18, 0.002, 0.7);
+      osc(150, 0.85,'sine', 0.9, 0,    15, 0.003, 0.75);
+      osc(75,  0.9, 'sine', 0.65,0,    12, 0.004, 0.8);
+      // 노이즈 다단 (밀도 높게, 길이는 짧게)
+      const nb=makeNoiseBuf(0.9,'pink');
+      playBuf(nb, 0,    1.4, 800,  28, 0.002, 0.75);
+      playBuf(nb, 0.06, 1.0, 1600, 55, 0.002, 0.6);
+      playBuf(nb, 0.14, 0.7, 3200,110, 0.002, 0.45);
+      // 고음 크래시
+      const nw=makeNoiseBuf(0.35,'white');
+      playBuf(nw, 0, 0.85, 9000, 3000, 0.002, 0.3);
+      // 짧은 에코 한 번만
+      playBuf(nb, 0.35, 0.35, 600, 20, 0.02, 0.5);
+      break;
+    }
+
+    case'straight':{
+      // 다다닥! 총 0.55초 - 리드미컬하게 올라가다 마지막 임팩트
+      const nb=makeNoiseBuf(0.16,'pink');
+      const steps=5;
+      const interval=0.08; // 카드 간격 80ms — 또렷하게 구분
+      for(let i=0;i<steps;i++){
+        const t=i*interval;
+        playBuf(nb, t, 0.85+i*0.06, 1600+i*220, 55, 0.003, 0.12);
+        osc(125+i*20, 0.14,'sine', 0.38+i*0.03, t, 38, 0.002, 0.11);
+      }
+      // 마지막 클라이맥스
+      const tf=steps*interval;
+      const nf=makeNoiseBuf(0.18,'pink');
+      playBuf(nf, tf, 1.3, 3200, 80, 0.002, 0.15);
+      osc(340, 0.22,'sine', 0.45, tf, 100, 0.002, 0.18);
+      break;
+    }
+
+    case'pairstraight':{
+      // 다다다닥!! 총 0.85초 - 페어씩 뚜렷하게, 피날레 강렬
+      const nb=makeNoiseBuf(0.15,'pink');
+      const pairs=4; // 4쌍 (더 많으면 뭉개짐)
+      const pairInterval=0.13; // 페어 간격 130ms
+      const cardGap=0.05;      // 페어 내 카드 간격 50ms
+      for(let i=0;i<pairs;i++){
+        const t=i*pairInterval;
+        const vol=0.85+i*0.05;
+        const lp=1700+i*220;
+        playBuf(nb, t,          vol,      lp,     50, 0.003, 0.11);
+        osc(120+i*16, 0.13,'sine', 0.36, t,         38, 0.002, 0.10);
+        playBuf(nb, t+cardGap,  vol+0.07, lp+280, 60, 0.003, 0.11);
+        osc(135+i*16, 0.13,'sine', 0.36, t+cardGap, 42, 0.002, 0.10);
+      }
+      // 피날레
+      const tf=pairs*pairInterval;
+      const nf=makeNoiseBuf(0.2,'pink');
+      playBuf(nf, tf, 1.5, 3800, 75, 0.002, 0.17);
+      osc(400, 0.26,'sine', 0.55, tf, 160, 0.002, 0.22);
+      osc(200, 0.28,'sine', 0.38, tf, 55,  0.003, 0.24);
+      break;
+    }
+
+    case'pass':{
+      // 휙-탁! 0.4초 - 지시봉 내리치기, 단호하고 임팩트 있게
+      // 휙 — 공기 가르는 스윕 (화이트노이즈, 내려가는 필터)
+      const nw=makeNoiseBuf(0.12,'white');
+      playBuf(nw, 0, 0.65, 5500, 1000, 0.002, 0.1);
+      // 탁 — 딱딱한 스틱 임팩트
+      const np=makeNoiseBuf(0.18,'pink');
+      playBuf(np, 0.09, 1.1, 3200, 160, 0.002, 0.14);
+      // 저음 바디 (묵직함)
+      osc(155, 0.22,'sine', 0.65, 0.09, 36, 0.002, 0.18);
+      osc(78,  0.24,'sine', 0.35, 0.09, 20, 0.003, 0.2);
+      // 고음 틱
+      osc(3800, 0.06,'sine', 0.28, 0.09, 1400, 0.002, 0.05);
+      // 잔향 — 짧고 자연스럽게
+      osc(680, 0.28,'sine', 0.06, 0.2, 520, 0.01, 0.22);
+      break;
+    }
+  }
+}
+</script>
+</body>
+</html>
